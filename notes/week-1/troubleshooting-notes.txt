@@ -1,0 +1,14 @@
+# Troubleshooting Notes
+
+## Problem
+Router interface remained down.
+
+## Cause
+Interface was administratively shut down.
+
+## Fix
+Used:
+no shutdown
+
+## Lesson Learned
+Cisco router interfaces are shutdown by default.
