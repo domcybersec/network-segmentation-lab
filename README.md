@@ -14,18 +14,18 @@ This project documents my CCNA-focused Packet Tracer Labs.
 
 ## Labs Completed
 
-#### Basic Topology 
+#### Basic Topology Lab
 - Configured router and switch connectivity
 - Assigned static IP Addresses
 - Verified PC to PC and PC to Router connectivity via Ping
 - Troubleshot interface issues
-##### Basic Topology Lessons Learned
-- Learned functional between switches and routers
-- Learned the difference between Administratively Down and Up
+##### Basic Topology Lab Lessons Learned
+- Learned functional differences between switches and routers
+- Learned the difference between administratively down and operational interfaces
 - Learned why it is important to be careful with how you designate IP addresses
 - Practiced troubleshooting logical and physical connectivity 
 - Improved familiarity with Cisco CLI navigation
-#### Vlan Segmentation Lab
+#### VLAN Segmentation Lab
 - Created VLANs for HR, IT, and Guest departments
 - Assigned switch access ports to specific VLANs
 - Configured static IP addressing for each department subnet
@@ -45,3 +45,22 @@ This project documents my CCNA-focused Packet Tracer Labs.
 - VLAN segmentation improves organization and security
 - Proper VLAN planning reduces unnecessary broadcast traffic
 - show vlan brief is useful for verifying VLAN assignments and switch port membership
+#### VLAN Trunking Lab
+- Configured trunk links between multiple switches
+- Extended VLANs across separate switches using trunk ports
+- Verified same-VLAN communication across switches
+- Verified VLAN isolation between separate VLANs
+- Used trunk verification commands for troubleshooting and validation
+
+##### VLAN Trunking - Connectivity Verification
+- HR VLAN devices successfully communicated across switches through trunk links
+- Devices in separate VLANs remained isolated without Layer 3 routing
+- Verified VLAN assignments using `show vlan brief`
+- Verified trunk operation using `show interfaces trunk`
+
+##### VLAN Trunking - Lessons Learned
+- Trunk ports allow multiple VLANs to traverse between switches
+- Access ports are used for end devices while trunk ports connect networking devices
+- VLANs can span multiple switches through trunk links
+- Proper trunk configuration is critical for VLAN communication between switches
+- Layer 2 switching alone does not allow communication between separate VLANs
