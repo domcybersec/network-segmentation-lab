@@ -112,3 +112,37 @@ This project documents my CCNA-focused Packet Tracer Labs.
 - Named ACLs improve readability and management compared to numbered ACLs
 - The implicit deny statement at the end of ACLs can unintentionally block traffic if permit rules are not configured properly
 - Applying ACLs close to the traffic source reduces unnecessary routed traffic
+#### DHCP Infrastructure Services Lab
+- Configured DHCP services on the router for multiple VLANs
+- Created separate DHCP pools for HR, IT, and Guest VLANs
+- Configured excluded addresses to reserve default gateway IPs
+- Configured automatic distribution of IP addresses, subnet masks, default gateways, and DNS settings
+- Converted end devices from static addressing to DHCP assignment
+- Verified successful automatic IP assignment across all VLANs
+- Maintained ACL-based Guest VLAN restrictions while implementing DHCP services
+- Used ping and tracert to troubleshoot DHCP and ACL-related connectivity issues
+
+##### DHCP Pool Design
+
+| VLAN | Network | Default Gateway |
+|------|----------|----------------|
+| 10 | 192.168.10.0/24 | 192.168.10.1 |
+| 20 | 192.168.20.0/24 | 192.168.20.1 |
+| 30 | 192.168.30.0/24 | 192.168.30.1 |
+
+##### DHCP Infrastructure Services - Troubleshooting
+- Verified DHCP clients were receiving valid IP configurations
+- Used tracert to identify that traffic was reaching the router but failing due to ACL behavior
+- Determined that ICMP echo replies from the Guest VLAN were being blocked by the extended ACL
+- Modified the named ACL (`GUEST-FILTER`) to permit ICMP echo replies from the Guest VLAN to internal VLANs
+- Adjusted ACL rule ordering to ensure permit statements were processed before deny entries
+- Retested connectivity successfully after ACL modification
+
+##### DHCP Infrastructure Services - Lessons Learned
+- DHCP automates IP address assignment and simplifies network management
+- Excluded addresses prevent critical infrastructure IPs from being assigned dynamically
+- ACLs can unintentionally block return traffic if protocols are not explicitly permitted
+- ACL rule order is critical because ACLs are processed top-down
+- ICMP troubleshooting tools such as ping and tracert are useful for isolating routing and filtering issues
+- Infrastructure services must be validated alongside existing security controls
+- Centralized DHCP configuration improves scalability and consistency across VLANs

@@ -1,0 +1,259 @@
+# DHCP Infrastructure Services Notes
+
+## Overview
+This lab focused on implementing DHCP (Dynamic Host Configuration Protocol) services across multiple VLANs within the network environment.
+
+The router was configured to function as the DHCP server for:
+- HR VLAN
+- IT VLAN
+- Guest VLAN
+
+The purpose of DHCP is to automate network configuration for client devices instead of manually assigning static IP addresses.
+
+---
+
+# DHCP Concepts
+
+## What is DHCP?
+DHCP (Dynamic Host Configuration Protocol) automatically assigns network configuration information to devices.
+
+DHCP can automatically provide:
+- IP address
+- subnet mask
+- default gateway
+- DNS server
+
+This reduces manual configuration and improves scalability.
+
+---
+
+# Benefits of DHCP
+
+DHCP helps:
+- simplify network administration
+- reduce configuration errors
+- improve scalability
+- centralize IP management
+- automate endpoint onboarding
+
+---
+
+# DHCP Design Used
+
+| VLAN | Network | Default Gateway |
+|------|----------|----------------|
+| 10 | 192.168.10.0/24 | 192.168.10.1 |
+| 20 | 192.168.20.0/24 | 192.168.20.1 |
+| 30 | 192.168.30.0/24 | 192.168.30.1 |
+
+---
+
+# DHCP Pools
+
+Separate DHCP pools were created for each VLAN.
+
+Example concept:
+```plaintext
+ip dhcp pool HR
+```
+
+Each pool contained:
+- network definition
+- default gateway
+- DNS server
+
+---
+
+# Excluded Addresses
+
+Gateway addresses were excluded from DHCP assignment.
+
+Example concept:
+```plaintext
+ip dhcp excluded-address 192.168.10.1
+```
+
+This prevents the router interface IP from being assigned to clients.
+
+---
+
+# DHCP Client Configuration
+
+PCs were changed from:
+- static IP addressing
+
+to:
+- DHCP automatic configuration
+
+This allowed devices to automatically receive:
+- IP address
+- subnet mask
+- gateway
+- DNS settings
+
+---
+
+# Verification Performed
+
+## Connectivity Testing
+Used ping testing to verify:
+- automatic addressing functionality
+- inter-VLAN communication
+- ACL policy behavior
+
+---
+
+## DHCP Validation
+Verified:
+- correct subnet assignment
+- correct default gateways
+- successful address leasing
+- client connectivity
+
+---
+
+# ACL Interaction with DHCP
+
+The existing extended ACL:
+```plaintext
+GUEST-FILTER
+```
+
+remained active during DHCP implementation.
+
+This introduced additional troubleshooting related to:
+- ICMP traffic
+- return traffic filtering
+- ACL rule order
+
+---
+
+# Troubleshooting Performed
+
+## Initial Problem
+- PC1, PC2, and PC3 could communicate successfully
+- PC4 could ping the router
+- PC4 could not communicate with other PCs
+
+---
+
+## Troubleshooting Process
+Used:
+```plaintext
+tracert
+```
+
+to identify where traffic stopped.
+
+The trace showed:
+- traffic successfully reaching the router
+- failure occurring during return traffic handling
+
+This indicated:
+- routing was functioning
+- ACL behavior was causing the issue
+
+---
+
+# Root Cause
+
+The ACL was blocking ICMP echo reply traffic from the Guest VLAN.
+
+This prevented successful ping responses even though routing itself was operational.
+
+---
+
+# Resolution
+
+The named ACL:
+```plaintext
+GUEST-FILTER
+```
+
+was modified to:
+- permit ICMP echo replies
+- allow return traffic from the Guest VLAN to internal VLANs
+
+The new permit statements were placed:
+- at the top of the ACL
+
+because ACLs process rules:
+- top-down
+- first match wins
+
+---
+
+# ACL Processing Logic
+
+ACLs evaluate traffic:
+1. top-down
+2. first matching rule is applied
+3. processing stops after first match
+
+Because of this:
+- ACL rule order is extremely important
+
+---
+
+# Key Verification Commands
+
+## View DHCP Information
+```plaintext
+show ip dhcp binding
+```
+
+Used to verify:
+- leased addresses
+- DHCP assignments
+
+---
+
+## View ACL Entries
+```plaintext
+show access-lists
+```
+
+Used to verify:
+- ACL rules
+- hit counters
+- permit/deny behavior
+
+---
+
+## Verify Router Interfaces
+```plaintext
+show ip interface brief
+```
+
+Used to verify:
+- subinterfaces
+- IP addressing
+- operational status
+
+---
+
+# Key Lessons Learned
+
+- DHCP automates endpoint network configuration
+- Excluded addresses protect infrastructure IP assignments
+- DHCP services must coexist correctly with ACL policies
+- ACLs can unintentionally block return traffic
+- ICMP troubleshooting tools help isolate routing and filtering issues
+- ACL rule order is critical for proper traffic handling
+- Successful routing does not always mean successful end-to-end communication
+- Infrastructure services require validation after security policy changes
+
+---
+
+# Real-World Relevance
+
+DHCP is heavily used in enterprise environments for:
+- office networks
+- wireless networks
+- guest access networks
+- large-scale endpoint management
+
+ACL-aware DHCP troubleshooting is important because:
+- security policies often interact with infrastructure services
+- improperly configured ACLs can disrupt legitimate traffic
+- troubleshooting layered services is a common networking responsibility
