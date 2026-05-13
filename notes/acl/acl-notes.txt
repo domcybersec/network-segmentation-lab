@@ -1,0 +1,203 @@
+# ACL Segmentation & Security Notes
+
+## Overview
+This lab focused on implementing network security policies using Extended Access Control Lists (ACLs). ACLs were used to restrict communication between VLANs while still allowing authorized traffic between trusted departments.
+
+The primary goal of this lab was to prevent Guest VLAN devices from accessing internal HR and IT networks.
+
+---
+
+# ACL Concepts
+
+## What is an ACL?
+An ACL (Access Control List) is a set of rules used to filter network traffic.
+
+ACLs can:
+- permit traffic
+- deny traffic
+- control communication between networks
+- enforce security policies
+
+ACLs are commonly used on:
+- routers
+- firewalls
+- Layer 3 switches
+
+---
+
+# Extended ACLs
+
+Extended ACLs can filter traffic based on:
+- source IP address
+- destination IP address
+- protocol type
+
+This allows more precise traffic control compared to standard ACLs.
+
+---
+
+# ACL Used in This Lab
+
+## ACL Name
+```plaintext
+GUEST-FILTER
+```
+
+A named extended ACL was created to block Guest VLAN access to internal VLANs.
+
+---
+
+# Security Policy Implemented
+
+| Source VLAN | Destination VLAN | Result |
+|-------------|------------------|--------|
+| Guest | HR | Denied |
+| Guest | IT | Denied |
+| HR | IT | Permitted |
+| IT | HR | Permitted |
+
+---
+
+# ACL Placement
+
+The ACL was applied:
+- inbound
+- on the Guest VLAN router subinterface
+
+Example concept:
+```plaintext
+interface g0/0.30
+ip access-group GUEST-FILTER in
+```
+
+---
+
+# Why Inbound Placement Was Used
+
+Inbound ACLs filter traffic as it enters an interface.
+
+Applying the ACL inbound on the Guest VLAN:
+- stops unauthorized traffic early
+- prevents unnecessary routed traffic
+- improves efficiency
+- follows common security best practices
+
+---
+
+# ACL Processing Logic
+
+ACLs are processed:
+- top-down
+- first match wins
+
+Once traffic matches a rule:
+- processing stops
+- remaining ACL entries are ignored
+
+---
+
+# Implicit Deny
+
+Every ACL contains an invisible:
+```plaintext
+deny any
+```
+
+at the end.
+
+This means:
+- traffic not explicitly permitted is automatically denied
+
+Because of this, permit statements are extremely important.
+
+---
+
+# Verification Commands
+
+## View ACL Entries
+```plaintext
+show access-lists
+```
+
+Used to verify:
+- ACL rules
+- hit counts
+- permit/deny entries
+
+---
+
+## Verify Interface ACL Application
+```plaintext
+show running-config
+```
+
+Used to verify:
+- ACL placement
+- interface configuration
+- subinterface configuration
+
+---
+
+# Connectivity Testing
+
+## Successful Tests
+- HR VLAN ↔ IT VLAN communication succeeded
+
+## Failed Tests
+- Guest VLAN → HR VLAN communication failed
+- Guest VLAN → IT VLAN communication failed
+
+These failures confirmed that the ACL was functioning properly.
+
+---
+
+# Troubleshooting Performed
+
+## Traffic Verification
+Used:
+- ping
+- tracert
+
+to determine:
+- where traffic stopped
+- whether routing was functioning correctly
+
+---
+
+## ACL Validation
+Verified:
+- ACL placement
+- inbound direction
+- permit/deny order
+- subinterface configuration
+
+---
+
+# Key Lessons Learned
+
+- Extended ACLs provide granular traffic filtering
+- ACL order is extremely important
+- ACLs stop processing after the first match
+- Inbound ACLs filter traffic as it enters an interface
+- Named ACLs improve readability and management
+- Proper ACL placement improves efficiency and security
+- The implicit deny statement can unintentionally block traffic if permit rules are missing
+- ACLs are foundational for network segmentation and security policy enforcement
+
+---
+
+# Real-World Relevance
+
+ACLs are commonly used in enterprise networks to:
+- isolate guest devices
+- protect sensitive departments
+- enforce segmentation policies
+- reduce lateral movement
+- control inter-department communication
+- implement basic firewall-like behavior
+
+Examples:
+- Blocking guest access to internal servers
+- Restricting finance department access
+- Limiting management network exposure
+- Controlling remote administrative access

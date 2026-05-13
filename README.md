@@ -64,3 +64,51 @@ This project documents my CCNA-focused Packet Tracer Labs.
 - VLANs can span multiple switches through trunk links
 - Proper trunk configuration is critical for VLAN communication between switches
 - Layer 2 switching alone does not allow communication between separate VLANs
+#### Inter-VLAN Routing Lab
+- Configured router-on-a-stick inter-VLAN routing
+- Created router subinterfaces for VLAN 10, VLAN 20, and VLAN 30
+- Configured 802.1Q encapsulation on router subinterfaces
+- Assigned default gateways for each VLAN
+- Verified successful communication between separate VLANs
+- Used ping and tracert for routing verification and troubleshooting
+
+##### Inter-VLAN Routing - Gateway Design
+
+| VLAN | Gateway |
+|------|----------|
+| 10 | 192.168.10.1 |
+| 20 | 192.168.20.1 |
+| 30 | 192.168.30.1 |
+
+##### Inter-VLAN Routing - Lessons Learned
+- Routers enable communication between separate VLANs
+- Router subinterfaces act as default gateways for VLANs
+- 802.1Q encapsulation allows multiple VLANs to traverse a single physical interface
+- Default gateway configuration is critical for inter-network communication
+- tracert can help identify where communication failures occur in the network path
+- Endpoint misconfigurations can prevent connectivity even when routing infrastructure is functioning properly
+#### ACL Segmentation & Security Lab
+- Configured extended ACLs to enforce VLAN security policies
+- Created a named extended ACL (`GUEST-FILTER`) to restrict Guest VLAN access
+- Applied ACL filtering inbound on the Guest VLAN router subinterface
+- Denied Guest VLAN access to HR and IT networks
+- Permitted authorized inter-VLAN communication between trusted departments
+- Verified ACL functionality through successful and failed ping testing
+
+##### ACL Security Policy
+
+| Source VLAN | Destination VLAN | Result |
+|-------------|------------------|--------|
+| Guest | HR | Denied |
+| Guest | IT | Denied |
+| HR | IT | Permitted |
+| IT | HR | Permitted |
+
+##### ACL Segmentation - Lessons Learned
+- Extended ACLs can filter traffic based on source and destination networks
+- ACLs are processed top-down and stop at the first matching rule
+- ACL placement is important for both efficiency and security
+- Inbound ACLs filter traffic as it enters an interface
+- Named ACLs improve readability and management compared to numbered ACLs
+- The implicit deny statement at the end of ACLs can unintentionally block traffic if permit rules are not configured properly
+- Applying ACLs close to the traffic source reduces unnecessary routed traffic

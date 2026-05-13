@@ -1,0 +1,160 @@
+# VLAN Segmentation & Trunking Notes
+
+## Overview
+This lab focused on implementing VLAN segmentation and extending VLAN communication across multiple switches using trunk links. The purpose of VLANs is to logically separate devices into different broadcast domains even when connected to the same physical switching infrastructure.
+
+---
+
+# VLAN Concepts
+
+## What is a VLAN?
+A VLAN (Virtual Local Area Network) is a logical segmentation of a switch network.
+
+VLANs allow:
+- separation of departments
+- reduced broadcast traffic
+- improved security
+- easier network management
+
+Devices in different VLANs cannot communicate without Layer 3 routing.
+
+---
+
+# VLAN Design Used
+
+| VLAN | Department | Network |
+|------|-------------|----------|
+| 10 | HR | 192.168.10.0/24 |
+| 20 | IT | 192.168.20.0/24 |
+| 30 | Guest | 192.168.30.0/24 |
+
+---
+
+# Access Ports
+
+Access ports are switch ports assigned to a single VLAN.
+
+These ports are typically used for:
+- PCs
+- printers
+- end-user devices
+
+Example configuration:
+```plaintext
+interface fa0/1
+switchport mode access
+switchport access vlan 10
+```
+
+This assigns the interface to VLAN 10.
+
+---
+
+# Trunk Ports
+
+Trunk ports allow multiple VLANs to travel between switches over a single connection.
+
+Trunks are typically used:
+- between switches
+- between switches and routers
+
+Example configuration:
+```plaintext
+interface g0/1
+switchport mode trunk
+```
+
+---
+
+# VLAN Communication Behavior
+
+## Same VLAN Communication
+Devices in the same VLAN can communicate:
+- even across multiple switches
+- as long as trunk links are configured properly
+
+Example:
+- PC1 (VLAN 10) ↔ PC2 (VLAN 10) = SUCCESS
+
+---
+
+## Different VLAN Communication
+Devices in different VLANs cannot communicate using Layer 2 switching alone.
+
+Example:
+- PC1 (VLAN 10) ↔ PC3 (VLAN 20) = FAILED
+
+This behavior is expected until inter-VLAN routing is configured.
+
+---
+
+# Verification Commands
+
+## Show VLAN Assignments
+```plaintext
+show vlan brief
+```
+
+Used to verify:
+- VLAN creation
+- port assignments
+- VLAN membership
+
+---
+
+## Verify Trunk Links
+```plaintext
+show interfaces trunk
+```
+
+Used to verify:
+- trunk interfaces
+- allowed VLANs
+- active trunking
+
+---
+
+# Troubleshooting Performed
+
+## Connectivity Testing
+Used ping tests to verify:
+- same-VLAN communication success
+- cross-VLAN communication failure
+
+---
+
+## VLAN Verification
+Checked:
+- VLAN assignments
+- access port membership
+- trunk operation
+
+---
+
+# Key Lessons Learned
+
+- VLANs provide logical segmentation on the same physical infrastructure
+- Access ports assign end devices to a single VLAN
+- Trunk ports allow multiple VLANs to traverse between switches
+- Devices in separate VLANs require Layer 3 routing to communicate
+- Proper VLAN planning improves scalability and security
+- show vlan brief and show interfaces trunk are important troubleshooting tools
+- VLAN segmentation reduces unnecessary broadcast traffic
+
+---
+
+# Real-World Relevance
+
+VLAN segmentation is commonly used in enterprise environments to:
+- separate departments
+- isolate guest devices
+- improve security
+- control broadcast domains
+- organize large networks
+
+Examples:
+- HR VLAN
+- IT VLAN
+- Voice VLAN
+- Guest VLAN
+- Management VLAN
