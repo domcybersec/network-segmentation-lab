@@ -146,3 +146,33 @@ This project documents my CCNA-focused Packet Tracer Labs.
 - ICMP troubleshooting tools such as ping and tracert are useful for isolating routing and filtering issues
 - Infrastructure services must be validated alongside existing security controls
 - Centralized DHCP configuration improves scalability and consistency across VLANs
+#### Secure Management & SSH Lab
+- Configured secure remote management access using SSH
+- Created local administrator usernames and passwords
+- Configured VTY lines for remote authentication
+- Generated RSA keys for SSH encryption
+- Restricted remote management access to SSH only
+- Successfully established SSH connections from PC1 to R1, SW1, and SW2
+- Disabled insecure Telnet-based remote access
+
+##### SSH Configuration Features
+- Local user authentication
+- RSA key generation
+- SSH Version 2
+- VTY line configuration
+- Secure remote CLI management
+
+##### Secure Management & SSH - Troubleshooting
+- Initial SSH connectivity issues occurred when using 2048-bit RSA keys in Packet Tracer
+- Determined the issue was related to emulator limitations rather than configuration errors
+- Regenerated RSA keys using 1024-bit encryption, which resolved the issue
+- Verified successful SSH connectivity to all managed network devices
+
+##### Secure Management & SSH - Lessons Learned
+- SSH provides encrypted remote management access for network devices
+- RSA keys are required for SSH functionality
+- VTY lines control remote administrative access
+- Local authentication improves management security
+- Telnet is insecure because traffic is transmitted in plaintext
+- Emulator environments may have limitations that differ from real enterprise hardware
+- Troubleshooting should isolate whether issues are configuration-related or platform-related

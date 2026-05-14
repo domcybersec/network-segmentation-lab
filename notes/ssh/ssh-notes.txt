@@ -1,0 +1,256 @@
+# Secure Management & SSH Notes
+
+## Overview
+This lab focused on implementing secure remote management access for network infrastructure devices using SSH (Secure Shell).
+
+SSH was configured on:
+- R1
+- SW1
+- SW2
+
+The purpose of SSH is to allow encrypted remote administrative access to network devices while preventing insecure plaintext management methods such as Telnet.
+
+---
+
+# SSH Concepts
+
+## What is SSH?
+SSH (Secure Shell) is a secure remote management protocol used to access devices through an encrypted command-line session.
+
+SSH provides:
+- encrypted communication
+- secure authentication
+- remote device management
+- protection against plaintext credential exposure
+
+---
+
+# Why SSH is Important
+
+SSH is commonly used for:
+- router administration
+- switch management
+- Linux server administration
+- firewall management
+- cloud infrastructure access
+
+SSH is preferred over Telnet because Telnet sends credentials and traffic in plaintext.
+
+---
+
+# SSH Configuration Components
+
+## Hostname
+A hostname must be configured before generating RSA keys.
+
+Example:
+```plaintext
+hostname R1
+```
+
+---
+
+## Domain Name
+A domain name is required for RSA key generation.
+
+Example:
+```plaintext
+ip domain-name lab.local
+```
+
+---
+
+## Local User Authentication
+Local usernames and passwords were created for administrative login.
+
+Example:
+```plaintext
+username admin secret Password123
+```
+
+---
+
+## RSA Key Generation
+RSA keys are required for SSH encryption.
+
+Example:
+```plaintext
+crypto key generate rsa
+```
+
+During this lab:
+- 2048-bit RSA keys caused SSH issues within Packet Tracer
+- 1024-bit RSA keys resolved the issue successfully
+
+This appeared to be related to Packet Tracer emulator limitations rather than configuration errors.
+
+---
+
+# SSH Version Configuration
+
+SSH Version 2 was configured because:
+- it is more secure
+- it replaces SSH Version 1
+
+Example:
+```plaintext
+ip ssh version 2
+```
+
+---
+
+# VTY Line Configuration
+
+VTY lines control remote administrative access.
+
+Example concept:
+```plaintext
+line vty 0 4
+login local
+transport input ssh
+```
+
+---
+
+# VTY Configuration Purpose
+
+## login local
+Uses the locally configured usernames and passwords for authentication.
+
+---
+
+## transport input ssh
+Restricts remote access to SSH only.
+
+This disables insecure Telnet access.
+
+---
+
+# Verification Performed
+
+## SSH Connectivity
+Successfully established SSH sessions from PC1 to:
+- R1
+- SW1
+- SW2
+
+---
+
+## Remote Login Validation
+Verified:
+- successful authentication
+- encrypted remote access
+- CLI access over SSH
+
+---
+
+# Troubleshooting Performed
+
+## Initial Problem
+SSH sessions failed when RSA keys were generated using:
+```plaintext
+2048-bit encryption
+```
+
+---
+
+## Troubleshooting Process
+Verified:
+- VTY configuration
+- local usernames
+- domain name
+- SSH version
+- interface connectivity
+
+Determined:
+- configuration was correct
+- issue was likely Packet Tracer emulator behavior
+
+---
+
+# Resolution
+
+Regenerated RSA keys using:
+```plaintext
+1024-bit encryption
+```
+
+SSH connectivity immediately began functioning successfully.
+
+---
+
+# Key Verification Commands
+
+## View SSH Status
+```plaintext
+show ip ssh
+```
+
+Used to verify:
+- SSH enabled
+- SSH version
+- authentication timeout settings
+
+---
+
+## View Active SSH Sessions
+```plaintext
+show ssh
+```
+
+Used to verify:
+- active SSH connections
+- remote administrative sessions
+
+---
+
+## Verify VTY Configuration
+```plaintext
+show running-config
+```
+
+Used to verify:
+- VTY settings
+- login methods
+- SSH restrictions
+
+---
+
+## Verify RSA Keys
+```plaintext
+show crypto key mypubkey rsa
+```
+
+Used to verify:
+- RSA key existence
+- key generation success
+
+---
+
+# Key Lessons Learned
+
+- SSH provides encrypted remote administrative access
+- RSA keys are required for SSH functionality
+- VTY lines control remote access behavior
+- Local authentication improves management security
+- Telnet is insecure because traffic is transmitted in plaintext
+- SSH Version 2 is preferred over SSH Version 1
+- Emulator limitations can differ from real enterprise hardware behavior
+- Troubleshooting should isolate configuration issues from platform limitations
+
+---
+
+# Real-World Relevance
+
+SSH is widely used in enterprise environments for:
+- network administration
+- infrastructure management
+- secure remote troubleshooting
+- cloud administration
+- Linux server management
+- firewall configuration
+
+SSH security is important because:
+- administrative credentials are highly sensitive
+- remote infrastructure access is commonly targeted by attackers
+- encrypted management traffic helps protect administrative sessions
