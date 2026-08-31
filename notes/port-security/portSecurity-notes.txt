@@ -1,0 +1,164 @@
+# Port Security & Switch Hardening
+
+## Overview
+
+Port Security is a Layer 2 security feature used to control which MAC addresses are permitted to communicate through a switch access port.
+
+In this lab, Port Security was implemented on user-facing switchports to prevent unauthorized devices from replacing legitimate endpoints.
+
+Unused switchports were also moved into a dedicated black-hole VLAN and administratively disabled to reduce the network's attack surface.
+
+---
+
+## Port Security Configuration
+
+Port Security was enabled on user-facing access ports on SW1 and SW2.
+
+Example:
+
+    interface FastEthernet0/1
+     switchport mode access
+     switchport access vlan 10
+     switchport port-security
+     switchport port-security maximum 1
+     switchport port-security violation shutdown
+     switchport port-security mac-address sticky
+
+The maximum number of permitted MAC addresses was set to one.
+
+Sticky MAC learning allows the switch to dynamically learn the connected device's MAC address and add it as a secure MAC address.
+
+---
+
+## Secured Interfaces
+
+SW1:
+
+- Fa0/1 - HR VLAN 10
+- Fa0/2 - IT VLAN 20
+
+SW2:
+
+- Fa0/1 - Guest VLAN 30
+- Fa0/2 - HR VLAN 10
+
+Infrastructure trunk interfaces were not configured with access-port Port Security.
+
+---
+
+## Sticky MAC Learning
+
+The following command enables sticky learning:
+
+    switchport port-security mac-address sticky
+
+When traffic is received from a connected device, its MAC address can be dynamically learned as a secure sticky MAC address.
+
+Verification:
+
+    show port-security address
+    show port-security interface fa0/1
+
+---
+
+## Port Security Violation Modes
+
+### Protect
+
+Unauthorized frames are dropped while the port remains operational.
+
+Protect does not increment the security violation counter in the same manner as restrict or shutdown.
+
+### Restrict
+
+Unauthorized frames are dropped while the port remains operational.
+
+Security violations are recorded, providing greater visibility than protect mode.
+
+### Shutdown
+
+Unauthorized traffic causes the interface to enter a secure-shutdown/error-disabled state.
+
+Shutdown is the default Port Security violation mode.
+
+The interface must be recovered administratively after the cause of the violation has been corrected.
+
+Example recovery:
+
+    interface fa0/1
+     shutdown
+     no shutdown
+
+---
+
+## Security Violation Test
+
+An unauthorized device was connected to SW1 Fa0/1 after the legitimate HR PC's MAC address had been learned using sticky Port Security.
+
+The unauthorized device used a different MAC address, causing a Port Security violation.
+
+Because the interface was configured for shutdown violation mode:
+
+1. The unauthorized MAC triggered a security violation.
+2. Fa0/1 entered the secure-shutdown state.
+3. The unauthorized device could not communicate.
+4. Reconnecting the legitimate PC did not automatically restore the port.
+5. The interface was administratively recovered using shutdown followed by no shutdown.
+
+This demonstrated that shutdown violation mode requires administrator intervention after a violation.
+
+---
+
+## Black-Hole VLAN
+
+VLAN 999 was created for unused switchports:
+
+    vlan 999
+     name Blackhole
+
+Unused FastEthernet ports were assigned to VLAN 999 and administratively disabled:
+
+    interface range fa0/3 - 24
+     switchport mode access
+     switchport access vlan 999
+     shutdown
+
+SW2's unused GigabitEthernet0/1 interface was also assigned to VLAN 999 and shut down.
+
+---
+
+## Why Disable Unused Ports?
+
+Unused switchports should not remain available in their default configuration.
+
+Moving unused interfaces into a dedicated unused VLAN and shutting them down provides defense in depth.
+
+If an interface is accidentally enabled later but its VLAN configuration is not changed, it remains isolated in VLAN 999 rather than immediately providing access to a production VLAN.
+
+Administratively disabling unused interfaces also reduces unnecessary network access and attack surface.
+
+---
+
+## Verification Commands
+
+    show port-security
+    show port-security address
+    show port-security interface fa0/1
+    show interfaces status
+    show vlan brief
+    show running-config
+
+---
+
+## Key Takeaways
+
+- Port Security controls which MAC addresses may use a switch access port.
+- Sticky learning dynamically learns secure MAC addresses.
+- Maximum MAC addresses can limit the number of devices permitted on a port.
+- Protect, restrict, and shutdown provide different responses to violations.
+- Shutdown is the default violation mode.
+- A shutdown-mode violation can place an interface into a secure-shutdown state.
+- Reconnecting the legitimate device does not automatically recover a shutdown port.
+- Unused switchports should be administratively disabled.
+- A dedicated black-hole/parking VLAN provides additional isolation for unused ports.
+- Infrastructure trunk ports should be treated differently from ordinary endpoint access ports.

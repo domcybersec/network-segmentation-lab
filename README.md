@@ -200,3 +200,28 @@ Key commands:
     ip nat inside source list 1 interface g0/0/1 overload
     show ip nat translations
     show ip nat statistics
+    ### Port Security & Switch Hardening
+
+Implemented Layer 2 access-port security and additional switch hardening on SW1 and SW2.
+
+Implemented:
+
+- Port Security on user-facing access ports
+- Maximum of one secure MAC address per endpoint port
+- Sticky MAC address learning
+- Shutdown violation mode
+- Simulated unauthorized-device Port Security violation
+- Administrative recovery of a secure-shutdown interface
+- VLAN 999 as a black-hole VLAN for unused interfaces
+- Administrative shutdown of unused switchports
+- Verification of secure MAC addresses and Port Security status
+
+Key commands:
+
+    switchport port-security
+    switchport port-security maximum 1
+    switchport port-security violation shutdown
+    switchport port-security mac-address sticky
+    show port-security
+    show port-security address
+    show port-security interface fa0/1
