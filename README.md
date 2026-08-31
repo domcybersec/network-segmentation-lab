@@ -176,3 +176,27 @@ This project documents my CCNA-focused Packet Tracer Labs.
 - Telnet is insecure because traffic is transmitted in plaintext
 - Emulator environments may have limitations that differ from real enterprise hardware
 - Troubleshooting should isolate whether issues are configuration-related or platform-related
+### NAT/PAT and Simulated Internet Connectivity
+
+Expanded the enterprise topology with an ISP router and external server to simulate Internet connectivity.
+
+Implemented:
+
+- ISP-facing routed connection using 203.0.113.0/30
+- Simulated external server network using 198.51.100.0/24
+- Static default routing toward the ISP
+- NAT inside/outside interface designation
+- Standard ACL for identifying internal NAT traffic
+- PAT/NAT overload using the router's outside interface
+- Internet connectivity for HR, IT, Guest, and Management networks
+- Verification of NAT translations and statistics
+- Validation that existing Guest VLAN ACL segmentation remained intact
+
+Key commands:
+
+    ip route 0.0.0.0 0.0.0.0 203.0.113.1
+    ip nat inside
+    ip nat outside
+    ip nat inside source list 1 interface g0/0/1 overload
+    show ip nat translations
+    show ip nat statistics

@@ -1,0 +1,210 @@
+# NAT/PAT
+
+## Overview
+
+Network Address Translation (NAT) allows a router to translate IP addresses as traffic moves between an internal private network and an external network.
+
+Private IPv4 addresses are not globally routable on the public Internet. NAT allows devices using private addresses to communicate with external networks by translating their private source addresses into a public-facing address.
+
+Private IPv4 ranges:
+
+- 10.0.0.0/8
+- 172.16.0.0/12
+- 192.168.0.0/16
+
+---
+
+## Lab Topology
+
+Internal networks:
+
+- VLAN 10 - HR - 192.168.10.0/24
+- VLAN 20 - IT - 192.168.20.0/24
+- VLAN 30 - Guest - 192.168.30.0/24
+- VLAN 99 - Management - 192.168.99.0/24
+
+External connection:
+
+- R1 G0/0/1 - 203.0.113.2/30
+- ISP-R1 G0/0/1 - 203.0.113.1/30
+- ISP-R1 G0/0/0 - 198.51.100.1/24
+- External Server - 198.51.100.10/24
+- External Server Default Gateway - 198.51.100.1
+
+---
+
+## Default Route
+
+R1 uses a default static route to forward traffic for unknown networks toward ISP-R1:
+
+    ip route 0.0.0.0 0.0.0.0 203.0.113.1
+
+The default route is used when no more specific route exists in the routing table.
+
+Verification:
+
+    show ip route
+
+A static default route appears similar to:
+
+    S* 0.0.0.0/0 via 203.0.113.1
+
+---
+
+## NAT Inside and Outside Interfaces
+
+The internal VLAN subinterfaces were configured as NAT inside interfaces:
+
+    interface g0/0/0.10
+     ip nat inside
+
+    interface g0/0/0.20
+     ip nat inside
+
+    interface g0/0/0.30
+     ip nat inside
+
+    interface g0/0/0.99
+     ip nat inside
+
+The ISP-facing interface was configured as the NAT outside interface:
+
+    interface g0/0/1
+     ip nat outside
+
+---
+
+## NAT ACL
+
+Standard ACL 1 identifies the internal networks that are eligible for translation:
+
+    access-list 1 permit 192.168.10.0 0.0.0.255
+    access-list 1 permit 192.168.20.0 0.0.0.255
+    access-list 1 permit 192.168.30.0 0.0.0.255
+    access-list 1 permit 192.168.99.0 0.0.0.255
+
+This ACL is being used to classify traffic for NAT.
+
+It is different from the GUEST-FILTER security ACL, which permits and denies traffic between VLANs.
+
+---
+
+## PAT / NAT Overload
+
+PAT was configured with:
+
+    ip nat inside source list 1 interface g0/0/1 overload
+
+Command breakdown:
+
+- `ip nat inside source` - Translate source addresses originating from the inside network.
+- `list 1` - Match addresses identified by ACL 1.
+- `interface g0/0/1` - Use the IP address assigned to the outside interface.
+- `overload` - Allow multiple inside devices to share the same outside IP address.
+
+R1 therefore translates internal private addresses to its outside address:
+
+    203.0.113.2
+
+Multiple internal devices can simultaneously use this address because PAT distinguishes their traffic using transport-layer port numbers or other identifiers.
+
+---
+
+## NAT Terminology
+
+### Inside Local
+
+The address assigned to an inside device on the internal network.
+
+Example:
+
+    192.168.10.x
+
+### Inside Global
+
+The address representing the inside device to the outside network.
+
+In this lab:
+
+    203.0.113.2
+
+### Outside Local
+
+The address of an outside device as it appears to the inside network.
+
+In this lab:
+
+    198.51.100.10
+
+### Outside Global
+
+The actual globally represented address of the outside device.
+
+In this lab:
+
+    198.51.100.10
+
+Because the external server's address is not being translated, its outside local and outside global addresses are the same.
+
+---
+
+## Troubleshooting Demonstration
+
+Before PAT was configured:
+
+R1 could successfully ping the external server because R1 used its directly connected outside address.
+
+Internal PCs could not successfully communicate with the external server because ISP-R1 did not have a route back to the internal 192.168.x.x networks.
+
+After PAT was configured, internal devices were represented externally by R1's 203.0.113.2 address.
+
+ISP-R1 already knew how to reach this network, allowing return traffic to reach R1. R1 then used its NAT translation information to forward the response to the correct internal device.
+
+---
+
+## Security Verification
+
+Existing Guest VLAN security remained functional after NAT was configured.
+
+Verified behavior:
+
+| Source | HR | IT | Guest | External Server |
+| --- | --- | --- | --- | --- |
+| HR | Allowed | Allowed | Allowed | Allowed |
+| IT | Allowed | Allowed | Allowed | Allowed |
+| Guest | Blocked | Blocked | Allowed | Allowed |
+
+The GUEST-FILTER ACL continues to prevent Guest devices from initiating communication with HR and IT.
+
+PAT independently allows Guest devices to access the external network.
+
+This demonstrates that the NAT ACL and security ACL perform different functions.
+
+---
+
+## Verification Commands
+
+    show ip route
+    show ip nat translations
+    show ip nat statistics
+    show access-lists
+    show ip interface brief
+
+To clear dynamic NAT translations:
+
+    clear ip nat translation *
+
+---
+
+## Key Takeaways
+
+- Private IPv4 addresses are not globally routable on the public Internet.
+- NAT translates addresses between inside and outside networks.
+- PAT allows many internal devices to share one public-facing IPv4 address.
+- `ip nat inside` and `ip nat outside` identify the NAT boundaries.
+- A standard ACL can identify which internal addresses should be translated.
+- An ACL used for NAT classification is not necessarily a traffic-filtering ACL.
+- `overload` enables PAT.
+- Inside local refers to the internal device's private address.
+- Inside global refers to the address representing that device externally.
+- NAT/PAT can coexist with security ACLs and VLAN segmentation.
