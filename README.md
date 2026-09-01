@@ -225,3 +225,20 @@ Key commands:
     show port-security
     show port-security address
     show port-security interface fa0/1
+### STP / RSTP & Layer 2 Redundancy
+
+Expanded the network to a three-switch redundant topology and implemented Spanning Tree Protocol.
+
+Implemented and tested:
+
+- STP root bridge election
+- Root, Designated, and Alternate port roles
+- STP path-cost selection
+- Intentional SW1 primary / SW2 secondary root design
+- Redundant Layer 2 link failover
+- Rapid PVST+ migration
+- Rapid STP convergence testing
+- PortFast on endpoint-facing interfaces
+- BPDU Guard
+- Simulated rogue-switch BPDU Guard violation
+- Post-change connectivity and security verification

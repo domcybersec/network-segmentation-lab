@@ -1,0 +1,233 @@
+# STP / RSTP Lab
+
+## Overview
+
+This lab introduced Layer 2 redundancy and Spanning Tree Protocol (STP) into the enterprise network.
+
+A third switch (SW3) was added to create redundant Layer 2 paths between SW1, SW2, and SW3.
+
+STP was observed and manipulated to understand root bridge election, port roles, path costs, loop prevention, and failover.
+
+The network was then migrated from traditional IEEE 802.1D STP to Rapid PVST+ for faster convergence.
+
+PortFast and BPDU Guard were also implemented on endpoint-facing access ports.
+
+---
+
+## Redundant Switching Topology
+
+The switching topology was expanded to three switches with redundant paths:
+
+              SW1
+             /   \
+            /     \
+          SW3-----SW2
+
+Without STP, the redundant Layer 2 topology could create switching loops, broadcast storms, duplicate frames, and MAC address-table instability.
+
+STP maintains physical redundancy while creating a loop-free logical topology.
+
+---
+
+## Initial Root Bridge Election
+
+Initially, all switches used the default STP priority.
+
+SW2 became the root bridge because it had the lowest Bridge ID.
+
+When bridge priorities are equal, the switch with the lowest MAC address wins the root bridge election.
+
+The Bridge ID consists of the bridge priority, extended system ID, and switch MAC address.
+
+---
+
+## STP Port Roles
+
+The following STP roles were observed:
+
+### Root Port
+
+The Root Port is the non-root switch's best path toward the root bridge.
+
+Each non-root switch has one Root Port per STP instance.
+
+### Designated Port
+
+The Designated Port provides the best path toward the root for a particular network segment.
+
+Ports on the root bridge operate as Designated Ports.
+
+### Alternate Port
+
+An Alternate Port provides a redundant path toward the root.
+
+It remains in a non-forwarding state to prevent a Layer 2 loop but can transition to forwarding if the preferred path fails.
+
+---
+
+## STP Path Cost
+
+STP uses path cost when selecting the preferred path toward the root bridge.
+
+Observed costs included:
+
+- Gigabit Ethernet: 4
+- Fast Ethernet: 19
+
+Lower total root path cost is preferred.
+
+For example, SW3 initially had a direct path toward the root with a cost of 19.
+
+During a link failure, SW3 used an alternate path through another switch:
+
+    19 + 4 = 23
+
+The alternate path became the new Root Port and restored connectivity.
+
+---
+
+## Root Bridge Engineering
+
+Rather than allowing MAC addresses to determine the production STP topology, SW1 was intentionally configured as the primary root bridge.
+
+SW2 was configured as the secondary root bridge.
+
+Production VLANs:
+
+- VLAN 10 - HR
+- VLAN 20 - IT
+- VLAN 30 - Guest
+- VLAN 99 - Management
+
+Example:
+
+    spanning-tree vlan 10,20,30,99 root primary
+
+Secondary:
+
+    spanning-tree vlan 10,20,30,99 root secondary
+
+This provides a predictable Layer 2 topology rather than relying on default bridge priorities and MAC-address tiebreakers.
+
+---
+
+## STP Failover Testing
+
+SW3's preferred Root Port was deliberately shut down.
+
+Before failure:
+
+    Fa0/23    Root FWD
+    Fa0/24    Altn BLK
+
+After failure, the alternate path transitioned to the Root Port:
+
+    Fa0/24    Root FWD
+
+The root path cost increased from 19 to 23 because traffic now reached SW1 through SW2.
+
+The test demonstrated how STP provides Layer 2 redundancy while preventing switching loops.
+
+---
+
+## Rapid PVST+
+
+The switches were migrated from traditional IEEE STP to Rapid PVST+:
+
+    spanning-tree mode rapid-pvst
+
+Verification showed:
+
+    Spanning tree enabled protocol rstp
+
+Rapid STP provides substantially faster convergence following topology changes while maintaining the same fundamental loop-prevention function.
+
+RSTP uses three primary port states:
+
+- Discarding
+- Learning
+- Forwarding
+
+---
+
+## PortFast
+
+PortFast was configured on endpoint-facing access ports:
+
+    spanning-tree portfast
+
+PortFast allows edge ports connected to endpoints to transition to forwarding immediately rather than waiting through the normal STP convergence process.
+
+PortFast should not normally be enabled on switch-to-switch links.
+
+---
+
+## BPDU Guard
+
+BPDU Guard was enabled on PortFast endpoint interfaces:
+
+    spanning-tree bpduguard enable
+
+BPDU Guard protects edge ports from unexpected switches.
+
+A rogue switch was deliberately connected to a protected endpoint port.
+
+When the port received a BPDU from the rogue switch, BPDU Guard disabled the interface.
+
+The rogue switch was removed and the interface was administratively recovered.
+
+---
+
+## Access Port Security
+
+Endpoint-facing interfaces now combine multiple Layer 2 protections:
+
+- Port Security
+- Sticky MAC learning
+- Maximum one secure MAC address
+- Shutdown violation mode
+- PortFast
+- BPDU Guard
+
+These technologies address different risks while providing secure and efficient endpoint connectivity.
+
+---
+
+## Verification Commands
+
+    show spanning-tree
+    show spanning-tree vlan 10
+    show spanning-tree root
+    show spanning-tree inconsistentports
+    show interfaces status
+    show interfaces trunk
+    show running-config interface fa0/1
+
+---
+
+## Connectivity Verification
+
+Following STP/RSTP configuration and security testing, PC1 successfully communicated with:
+
+- VLAN 20
+- VLAN 30
+- External server 198.51.100.10
+
+This verified that existing inter-VLAN routing, ACL, NAT/PAT, and Layer 2 connectivity continued functioning after the topology changes.
+
+---
+
+## Key Takeaways
+
+- Redundant Layer 2 links can create switching loops.
+- STP creates a loop-free logical topology while maintaining physical redundancy.
+- The switch with the lowest Bridge ID becomes the root bridge.
+- Lower bridge priority is preferred.
+- MAC address acts as a tiebreaker when priorities are equal.
+- Root Ports provide the best path toward the root bridge.
+- Alternate Ports provide standby paths and prevent loops.
+- STP path cost influences path selection.
+- Root bridge placement should be intentionally engineered.
+- RSTP converges substantially faster than traditional STP.
+- PortFast improves endpoint connectivity by allowing immediate forwarding.
+- BPDU Guard protects endpoint ports from unexpected switches.
