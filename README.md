@@ -242,3 +242,165 @@ Implemented and tested:
 - BPDU Guard
 - Simulated rogue-switch BPDU Guard violation
 - Post-change connectivity and security verification
+
+MODULE 11 - ETHERCHANNEL / LACP
+===============================
+
+OVERVIEW
+--------
+
+Implemented an IEEE LACP EtherChannel between SW1 and SW2 to provide link aggregation and physical-link redundancy.
+
+Two FastEthernet links were bundled into the logical Port-channel1 interface and configured as an 802.1Q trunk.
+
+This module also demonstrated the interaction between EtherChannel and Rapid-PVST and tested connectivity during a physical member-link failure.
+
+
+IMPLEMENTATION
+--------------
+
+Physical EtherChannel members:
+
+SW1 Fa0/21 <--> SW2 Fa0/21
+SW1 Fa0/22 <--> SW2 Fa0/22
+
+Logical interface:
+
+Port-channel1 (Po1)
+
+LACP mode:
+
+SW1 - Active
+SW2 - Active
+
+Port-channel1 was configured as an 802.1Q trunk carrying:
+
+- VLAN 10 - HR
+- VLAN 20 - IT
+- VLAN 30 - Guest
+- VLAN 99 - Management
+
+VLAN 999 was excluded because it is used as the blackhole/parking VLAN for unused switch ports.
+
+
+CONFIGURATION
+-------------
+
+SW1:
+
+interface range FastEthernet0/21 - 22
+ switchport mode trunk
+ channel-group 1 mode active
+ no shutdown
+
+interface Port-channel1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
+
+
+SW2:
+
+interface range FastEthernet0/21 - 22
+ switchport mode trunk
+ channel-group 1 mode active
+ no shutdown
+
+interface Port-channel1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
+
+
+VERIFICATION
+------------
+
+Successful LACP negotiation was verified with:
+
+show etherchannel summary
+
+Healthy EtherChannel:
+
+Po1(SU)   LACP   Fa0/21(P) Fa0/22(P)
+
+This confirmed that:
+
+- Po1 was operating as a Layer 2 EtherChannel.
+- The Port-channel was in use.
+- Fa0/21 and Fa0/22 were successfully bundled using LACP.
+
+Trunk operation was verified with:
+
+show interfaces trunk
+
+Port-channel1 successfully carried VLANs 10,20,30,99.
+
+
+SPANNING TREE INTEGRATION
+-------------------------
+
+Rapid-PVST initially preferred the existing GigabitEthernet0/2 link between SW1 and SW2 because its STP cost was lower than the FastEthernet EtherChannel.
+
+SW2 initially showed:
+
+Gi0/2   Root FWD   Cost 4
+Po1     Altn BLK   Cost 12
+
+After the direct GigabitEthernet0/2 link was disabled, Rapid-PVST selected Port-channel1 as SW2's root path:
+
+Po1     Root FWD   Cost 12
+
+This demonstrated that spanning tree treats the EtherChannel as a single logical interface.
+
+
+REDUNDANCY TEST
+---------------
+
+A physical member-link failure was simulated by shutting down SW2 Fa0/21.
+
+EtherChannel verification then showed:
+
+Po1(SU)   LACP   Fa0/21(D) Fa0/22(P)
+
+Port-channel1 remained operational through Fa0/22.
+
+During the failure:
+
+- Po1 remained up.
+- Rapid-PVST continued using Po1 as the root path.
+- PC2 successfully continued communicating with PC1.
+- End-to-end connectivity survived the physical member-link failure.
+
+This demonstrated the link redundancy provided by EtherChannel.
+
+
+TROUBLESHOOTING
+---------------
+
+During initial testing, Packet Tracer produced inconsistent Rapid-PVST behavior after the original GigabitEthernet0/2 path was disabled.
+
+The EtherChannel configuration was removed, cleaned, and rebuilt.
+
+After rebuilding the LACP bundle, Port-channel1 correctly transitioned to the STP Root Forwarding state and host connectivity succeeded.
+
+Commands used for configuration verification and troubleshooting included:
+
+show etherchannel summary
+show interfaces port-channel 1
+show interfaces trunk
+show spanning-tree vlan 10
+show spanning-tree inconsistentports
+show running-config
+
+
+SKILLS DEMONSTRATED
+-------------------
+
+- EtherChannel configuration
+- LACP negotiation
+- Layer 2 link aggregation
+- 802.1Q trunk configuration
+- Rapid-PVST and EtherChannel integration
+- STP path-cost analysis
+- Physical link redundancy
+- Member-link failure testing
+- End-to-end connectivity verification
+- Cisco IOS troubleshooting

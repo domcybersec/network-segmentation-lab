@@ -1,0 +1,248 @@
+ETHERCHANNEL / LACP NOTES
+=========================
+
+PURPOSE
+-------
+
+EtherChannel combines multiple physical Ethernet links into one logical link.
+
+Main benefits:
+- Increased aggregate bandwidth
+- Redundancy if a physical member link fails
+- Load distribution across member links
+- STP treats the EtherChannel as one logical interface instead of multiple parallel links
+
+In this lab, two FastEthernet links between SW1 and SW2 were bundled into Port-channel1 using LACP.
+
+
+LACP
+----
+
+LACP (Link Aggregation Control Protocol) is an IEEE standard used to dynamically negotiate an EtherChannel.
+
+LACP modes:
+
+active
+- Actively attempts to form an LACP EtherChannel.
+
+passive
+- Waits for the other side to initiate LACP negotiation.
+
+Combinations:
+
+Active + Active = Forms
+Active + Passive = Forms
+Passive + Passive = Does not form
+
+This lab ultimately used active mode on both SW1 and SW2.
+
+Other EtherChannel options include:
+
+PAgP
+- Cisco proprietary
+- Uses desirable and auto modes
+
+Static EtherChannel
+- Uses "mode on"
+- Does not use a negotiation protocol
+
+
+PHYSICAL DESIGN
+---------------
+
+Two FastEthernet connections were added between SW1 and SW2:
+
+SW1 Fa0/21 <--> SW2 Fa0/21
+SW1 Fa0/22 <--> SW2 Fa0/22
+
+These two physical interfaces were bundled into:
+
+Port-channel1 (Po1)
+
+The existing SW1-SW2 GigabitEthernet0/2 connection was shut down during final testing so that Port-channel1 became the active path between SW1 and SW2.
+
+
+CONFIGURATION
+-------------
+
+SW1:
+
+interface range FastEthernet0/21 - 22
+ switchport mode trunk
+ channel-group 1 mode active
+ no shutdown
+
+interface Port-channel1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
+
+
+SW2:
+
+interface range FastEthernet0/21 - 22
+ switchport mode trunk
+ channel-group 1 mode active
+ no shutdown
+
+interface Port-channel1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
+
+
+Port-channel1 carries:
+
+VLAN 10 - HR
+VLAN 20 - IT
+VLAN 30 - Guest
+VLAN 99 - Management
+
+VLAN 999 is not carried across Port-channel1 because it is the blackhole/parking VLAN used for unused switch ports.
+
+
+VERIFYING ETHERCHANNEL
+----------------------
+
+Primary verification command:
+
+show etherchannel summary
+
+Healthy output:
+
+Po1(SU)   LACP   Fa0/21(P) Fa0/22(P)
+
+Important flags:
+
+S = Layer 2
+U = Port-channel is in use
+P = Interface is bundled in the Port-channel
+D = Interface is down
+
+The trunk was also verified with:
+
+show interfaces trunk
+
+Port-channel1 successfully carried VLANs:
+
+10,20,30,99
+
+
+ETHERCHANNEL AND SPANNING TREE
+------------------------------
+
+Initially, both the original GigabitEthernet0/2 connection and Port-channel1 existed between SW1 and SW2.
+
+Rapid-PVST preferred GigabitEthernet0/2 because it had the lower STP path cost.
+
+SW2 showed:
+
+Gi0/2   Root FWD   Cost 4
+Po1     Altn BLK   Cost 12
+
+This prevented the redundant Layer 2 paths from creating a switching loop.
+
+After GigabitEthernet0/2 was shut down, Rapid-PVST selected Port-channel1 as SW2's path toward the root bridge.
+
+SW2 then showed:
+
+Root ID
+ Cost 12
+ Port 28 (Port-channel1)
+
+Po1   Root FWD   Cost 12
+
+This demonstrated that STP treats the EtherChannel as one logical interface rather than treating Fa0/21 and Fa0/22 as separate STP paths.
+
+
+MEMBER LINK FAILURE TEST
+------------------------
+
+EtherChannel redundancy was tested by shutting down one physical member on SW2:
+
+interface FastEthernet0/21
+ shutdown
+
+Verification then showed:
+
+Po1(SU)   LACP   Fa0/21(D) Fa0/22(P)
+
+This demonstrated that:
+
+- Fa0/21 failed.
+- Fa0/22 remained bundled.
+- Port-channel1 remained operational.
+- STP continued using Po1 as the root port.
+- PC2 could still successfully ping PC1.
+- Losing one physical member did not cause the logical EtherChannel to fail.
+
+Fa0/21 was restored after testing:
+
+interface FastEthernet0/21
+ no shutdown
+
+
+BANDWIDTH
+---------
+
+Each FastEthernet member provides 100 Mbps.
+
+Two 100 Mbps members provide approximately 200 Mbps of aggregate EtherChannel capacity.
+
+This does not normally mean that a single traffic flow receives 200 Mbps.
+
+EtherChannel uses a hashing algorithm to distribute different traffic flows across the physical member interfaces. Multiple flows can therefore use the combined capacity of the bundle.
+
+If one 100 Mbps member fails, connectivity can continue through the remaining member, but available aggregate capacity is reduced.
+
+Packet Tracer continued reporting BW 200000 Kbit after Fa0/21 was shut down even though it correctly showed only Fa0/22 as an active member. This was treated as a Packet Tracer simulation limitation.
+
+
+TROUBLESHOOTING
+---------------
+
+During the first EtherChannel configuration, Packet Tracer produced contradictory Rapid-PVST output after GigabitEthernet0/2 was shut down.
+
+SW2 identified Port-channel1 as its root port while simultaneously displaying Po1 as blocked.
+
+The EtherChannel was removed and rebuilt from a clean configuration.
+
+Useful troubleshooting commands included:
+
+show etherchannel summary
+show spanning-tree vlan 10
+show interfaces trunk
+show interfaces port-channel 1
+show running-config
+show spanning-tree inconsistentports
+
+After rebuilding the LACP EtherChannel, Rapid-PVST correctly showed:
+
+Po1   Root FWD
+
+End-to-end connectivity also succeeded.
+
+This demonstrated the importance of comparing multiple sources of information during troubleshooting instead of relying on one command.
+
+A useful troubleshooting process is:
+
+1. Verify physical/interface state.
+2. Verify EtherChannel/LACP state.
+3. Verify trunk configuration.
+4. Verify STP state.
+5. Verify the running configuration on both switches.
+6. Test actual end-to-end connectivity.
+
+
+KEY TAKEAWAYS
+-------------
+
+- EtherChannel combines multiple physical links into one logical link.
+- LACP is the IEEE standards-based EtherChannel negotiation protocol.
+- LACP active/active and active/passive can successfully form a channel.
+- Passive/passive will not negotiate an LACP channel.
+- EtherChannel member interfaces must have compatible configurations.
+- A Port-channel can operate as an 802.1Q trunk.
+- STP treats an EtherChannel as a logical interface.
+- STP path cost determines which redundant Layer 2 path forwards traffic.
+- A failed EtherChannel member does not necessarily bring down the Port-channel.
+- EtherChannel provides both aggregate bandwidth and physical-link redundancy.
+- show etherchannel summary is a primary verification and troubleshooting command.
