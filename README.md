@@ -905,32 +905,270 @@ The project currently incorporates:
 - Dynamic route propagation
 - OSPF default-route advertisement
 
----
+## Module 13 - IPv6 and OSPFv3
 
-# Project Roadmap
+### Overview
 
-## Completed
+Extended the existing IPv4 enterprise topology into a dual-stack IPv4/IPv6 network. IPv6 was deployed across the HQ VLANs, branch network, WAN, and simulated external network while preserving the existing IPv4 configuration.
 
-- [x] Module 1 - Basic Topology
-- [x] Module 2 - VLAN Segmentation
-- [x] Module 3 - VLAN Trunking
-- [x] Module 4 - Inter-VLAN Routing
-- [x] Module 5 - ACL Segmentation and Security
-- [x] Module 6 - DHCP Infrastructure Services
-- [x] Module 7 - Secure Management and SSH
-- [x] Module 8 - NAT/PAT and Simulated Internet Connectivity
-- [x] Module 9 - Port Security and Switch Hardening
-- [x] Module 10 - STP / RSTP and Layer 2 Redundancy
-- [x] Module 11 - EtherChannel / LACP
-- [x] Module 12 - OSPF Dynamic Routing
+Dynamic IPv6 routing was implemented internally using OSPFv3, while static and default IPv6 routing were used at the simulated ISP edge.
 
-## Planned
+### IPv6 Addressing
 
-- [ ] Module 13 - IPv6
-- [ ] Network Services and Monitoring
-- [ ] NTP
-- [ ] Syslog
-- [ ] SNMP
-- [ ] CDP / LLDP
-- [ ] Final Security Hardening
-- [ ] Final Troubleshooting and Documentation Review
+| Network | IPv6 Prefix | Gateway / Router |
+|---|---|---|
+| HR - VLAN 10 | `2001:DB8:10::/64` | `2001:DB8:10::1` |
+| IT - VLAN 20 | `2001:DB8:20::/64` | `2001:DB8:20::1` |
+| Guest - VLAN 30 | `2001:DB8:30::/64` | `2001:DB8:30::1` |
+| Management - VLAN 99 | `2001:DB8:99::/64` | `2001:DB8:99::1` |
+| Branch LAN | `2001:DB8:40::/64` | `2001:DB8:40::1` |
+| WAN Transit | `2001:DB8:113::/64` | ISP-R1 `.1`, R1 `.2`, R2 `.3` |
+| External Network | `2001:DB8:198::/64` | ISP-R1 `.1`, Server `.10` |
+
+The `2001:DB8::/32` documentation prefix is used to simulate globally addressed IPv6 networks within Packet Tracer.
+
+### Implemented
+
+- Dual-stack IPv4/IPv6 operation
+- IPv6 addressing across existing HQ VLANs
+- SLAAC host configuration
+- IPv6 link-local default gateways
+- IPv6 router-on-a-stick
+- IPv6 inter-VLAN routing
+- IPv6 addressing across the shared WAN
+- IPv6 Branch LAN
+- Single-area OSPFv3 between R1 and R2
+- Dynamic IPv6 route exchange
+- OSPFv3 default route advertisement
+- Static and default IPv6 routing toward ISP-R1
+- External IPv6 server network
+- End-to-end IPv6 connectivity without NAT/PAT
+- IPv6 Guest ACL matching the existing IPv4 segmentation policy
+
+### SLAAC and Dual Stack
+
+IPv6 was added alongside the existing IPv4 configuration rather than replacing it.
+
+HQ and Branch clients use SLAAC to automatically configure IPv6 addresses from Router Advertisements. IPv6 hosts use the router's link-local address as their default gateway.
+
+For example, VLAN 10 operates with both protocols:
+
+```text
+IPv4 Network:  192.168.10.0/24
+IPv4 Gateway:  192.168.10.1
+
+IPv6 Network:  2001:DB8:10::/64
+IPv6 Gateway:  2001:DB8:10::1
+```
+
+This allows the same VLAN, trunk, and router-on-a-stick infrastructure to carry both IPv4 and IPv6 traffic.
+
+### OSPFv3
+
+R1 and R2 form an OSPFv3 adjacency across the shared WAN.
+
+```text
+Neighbor ID     Pri   State       Interface
+2.2.2.2           1   FULL/BDR    GigabitEthernet0/0/1
+```
+
+R2 dynamically learns the HQ IPv6 prefixes:
+
+```text
+O 2001:DB8:10::/64
+O 2001:DB8:20::/64
+O 2001:DB8:30::/64
+O 2001:DB8:99::/64
+```
+
+R1 dynamically learns the Branch IPv6 prefix:
+
+```text
+O 2001:DB8:40::/64
+```
+
+OSPFv3 uses IPv6 link-local addresses as next hops. For example, R2 learned the HQ networks through R1's link-local address on the WAN rather than through R1's global IPv6 address.
+
+### IPv6 Default Routing
+
+R1 uses an IPv6 default route toward ISP-R1:
+
+```text
+ipv6 route ::/0 2001:DB8:113::1
+```
+
+R1 advertises this default route into OSPFv3:
+
+```text
+ipv6 router ospf 1
+ default-information originate
+```
+
+R2 therefore learns an OSPF external IPv6 default route:
+
+```text
+OE2 ::/0 [110/1]
+```
+
+This allows the Branch network to forward unknown IPv6 destinations toward R1 while R1 forwards external traffic toward ISP-R1.
+
+### IPv6 External Connectivity
+
+The simulated ISP and external server were extended to IPv6.
+
+```text
+                    External Server
+                    2001:DB8:198::10
+                           |
+                         ISP-R1
+                    2001:DB8:198::1
+                           |
+                    2001:DB8:113::1
+                           |
+                         WAN-SW
+                       /        \
+                      /          \
+       2001:DB8:113::2          2001:DB8:113::3
+              R1                       R2
+               |                        |
+           HQ VLANs               Branch LAN
+                                2001:DB8:40::/64
+```
+
+ISP-R1 remains outside the internal OSPFv3 domain. Static IPv6 routes provide return paths from ISP-R1 toward the internal networks.
+
+HQ and Branch hosts successfully reached the external server at:
+
+```text
+2001:DB8:198::10
+```
+
+The Branch-to-external path is:
+
+```text
+Branch-PC
+    |
+   R2
+    |
+ OSPFv3 Default Route
+    |
+   R1
+    |
+ IPv6 Default Route
+    |
+ ISP-R1
+    |
+External Server
+```
+
+Unlike the IPv4 portion of the lab, IPv6 traffic is routed end-to-end without PAT.
+
+### Dual-Stack Security
+
+Testing revealed an important dual-stack security issue.
+
+The existing IPv4 `GUEST-FILTER` ACL successfully prevented Guest VLAN hosts from initiating traffic toward HR and IT. However, IPv4 ACLs do not filter IPv6 traffic.
+
+After IPv6 was enabled, testing from PC4 in the Guest VLAN showed:
+
+```text
+Guest -> HR over IPv4 = BLOCKED
+Guest -> HR over IPv6 = ALLOWED
+```
+
+This created an unintended IPv6 path around the existing IPv4 segmentation policy.
+
+An IPv6 ACL was therefore created:
+
+```text
+ipv6 access-list GUEST-FILTER-V6
+ permit icmp 2001:DB8:30::/64 2001:DB8:20::/64 echo-reply
+ permit icmp 2001:DB8:30::/64 2001:DB8:10::/64 echo-reply
+ deny ipv6 2001:DB8:30::/64 2001:DB8:10::/64
+ deny ipv6 2001:DB8:30::/64 2001:DB8:20::/64
+ permit ipv6 any any
+```
+
+The ACL was applied inbound to the Guest VLAN subinterface:
+
+```text
+interface GigabitEthernet0/0/0.30
+ ipv6 traffic-filter GUEST-FILTER-V6 in
+```
+
+Final Guest policy:
+
+```text
+Guest -> HR       = BLOCKED
+Guest -> IT       = BLOCKED
+HR/IT -> Guest    = ALLOWED
+Guest -> External = ALLOWED
+```
+
+This demonstrates an important dual-stack security principle: IPv4 security controls do not automatically protect IPv6 traffic, so equivalent policies must be implemented for both protocols.
+
+### Verification
+
+Successfully verified:
+
+- SLAAC IPv6 address assignment
+- IPv6 link-local default gateways
+- Local IPv6 host-to-gateway connectivity
+- IPv6 inter-VLAN routing
+- R1-to-R2 IPv6 WAN connectivity
+- OSPFv3 `FULL` adjacency
+- Dynamic IPv6 route learning
+- Branch-to-HQ router connectivity
+- Branch-to-HQ host-to-host connectivity
+- HQ-to-external IPv6 connectivity
+- Branch-to-external IPv6 connectivity
+- OSPFv3 IPv6 default route propagation
+- Guest-to-HR IPv6 blocking
+- Guest-to-IT IPv6 blocking
+- Continued permitted Guest external IPv6 connectivity
+
+Key verification commands included:
+
+```text
+show ipv6 interface brief
+show ipv6 route
+show ipv6 route ospf
+show ipv6 ospf neighbor
+show ipv6 access-list
+```
+
+### Lessons Learned
+
+- IPv4 and IPv6 can operate simultaneously using dual stack.
+- SLAAC allows hosts to automatically configure IPv6 addresses using Router Advertisements.
+- IPv6 hosts commonly use router link-local addresses as their default gateways.
+- Link-local addresses are also commonly used as routing-protocol next hops.
+- Existing router-on-a-stick infrastructure can support both IPv4 and IPv6.
+- IPv6 addressing alone does not provide remote connectivity; routers still require routes to remote IPv6 prefixes.
+- OSPFv3 provides dynamic routing for IPv6 networks.
+- `::/0` is the IPv6 equivalent of the IPv4 `0.0.0.0/0` default route.
+- OSPFv3 can advertise an IPv6 default route to downstream routers.
+- Native IPv6 routing does not require the IPv4 PAT design used elsewhere in this lab.
+- IPv4 ACLs do not filter IPv6 traffic.
+- Dual-stack deployments require equivalent security controls for both IPv4 and IPv6.
+- End-to-end host testing is necessary to validate both routing and security policy.
+
+### Skills Demonstrated
+
+- IPv6 addressing and `/64` subnetting
+- Dual-stack IPv4/IPv6 networking
+- SLAAC and Router Advertisements
+- IPv6 link-local addressing
+- IPv6 router-on-a-stick
+- IPv6 inter-VLAN routing
+- IPv6 WAN configuration
+- OSPFv3 configuration
+- OSPFv3 neighbor verification
+- Dynamic IPv6 routing
+- IPv6 static routing
+- IPv6 default routing
+- OSPFv3 default route advertisement
+- Native end-to-end IPv6 connectivity
+- IPv6 ACL configuration
+- Dual-stack security validation
+- IPv6 connectivity troubleshooting
