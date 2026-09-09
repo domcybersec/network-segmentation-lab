@@ -404,3 +404,65 @@ SKILLS DEMONSTRATED
 - Member-link failure testing
 - End-to-end connectivity verification
 - Cisco IOS troubleshooting
+## Module 12 - OSPF Dynamic Routing: HQ and Branch Connectivity
+
+### Overview
+
+Expanded the existing enterprise network by adding a simulated branch location
+and implementing single-area OSPFv2 between the HQ and branch routers.
+
+The goal was to replace manual routing between locations with dynamic route
+exchange while integrating the new branch with the existing VLAN, NAT/PAT,
+ACL, and simulated Internet infrastructure.
+
+### Topology
+
+The expanded network includes:
+
+- R1 - HQ router
+- R2 - Branch router
+- WAN-SW - Shared Layer 2 transit switch
+- SW4 - Branch access switch
+- Branch-PC
+- ISP-R1
+- External Server
+
+HQ networks:
+
+- `192.168.10.0/24` - HR
+- `192.168.20.0/24` - IT
+- `192.168.30.0/24` - Guest
+- `192.168.99.0/24` - Management
+
+Branch network:
+
+- `192.168.40.0/24`
+
+WAN/transit network:
+
+- `203.0.113.0/29`
+- ISP-R1: `203.0.113.1`
+- R1: `203.0.113.2`
+- R2: `203.0.113.3`
+
+### OSPF Implementation
+
+Configured single-area OSPFv2 using Area 0.
+
+Router IDs:
+
+- R1: `1.1.1.1`
+- R2: `2.2.2.2`
+
+R1 advertises the four HQ networks while R2 advertises the branch LAN.
+
+The routers successfully formed a FULL OSPF adjacency across the shared
+Ethernet WAN.
+
+R2 dynamically learned:
+
+```text
+O 192.168.10.0/24 via 203.0.113.2
+O 192.168.20.0/24 via 203.0.113.2
+O 192.168.30.0/24 via 203.0.113.2
+O 192.168.99.0/24 via 203.0.113.2

@@ -1,0 +1,571 @@
+MODULE 12 - OSPF / DYNAMIC ROUTING
+===================================
+
+PURPOSE
+-------
+
+This module introduced dynamic routing by expanding the existing HQ network
+with a branch location.
+
+R2 was added as a branch router, along with SW4 and a Branch-PC. OSPF was
+configured between R1 and R2 so that HQ and branch networks could be learned
+dynamically instead of requiring individual static routes.
+
+The module also integrated OSPF with the existing simulated Internet and
+NAT/PAT configuration.
+
+
+NETWORKS
+--------
+
+HQ Networks:
+
+VLAN 10 - HR
+192.168.10.0/24
+Gateway: 192.168.10.1
+
+VLAN 20 - IT
+192.168.20.0/24
+Gateway: 192.168.20.1
+
+VLAN 30 - Guest
+192.168.30.0/24
+Gateway: 192.168.30.1
+
+VLAN 99 - Management
+192.168.99.0/24
+Gateway: 192.168.99.1
+
+
+Branch Network:
+
+192.168.40.0/24
+
+R2 G0/0/1:
+192.168.40.1/24
+
+Branch-PC:
+192.168.40.10/24
+
+Default Gateway:
+192.168.40.1
+
+
+WAN / TRANSIT NETWORK
+---------------------
+
+A 2960 switch named WAN-SW provides Layer 2 connectivity between:
+
+- R1
+- R2
+- ISP-R1
+
+Network:
+
+203.0.113.0/29
+
+Subnet Mask:
+
+255.255.255.248
+
+Addresses:
+
+ISP-R1 = 203.0.113.1
+R1     = 203.0.113.2
+R2     = 203.0.113.3
+
+The original R1-to-ISP /30 network was expanded to /29 so R1, R2, and
+ISP-R1 could share the Ethernet segment.
+
+
+OSPF OVERVIEW
+-------------
+
+OSPF stands for Open Shortest Path First.
+
+OSPF is a link-state Interior Gateway Protocol (IGP) used to dynamically
+exchange routing information between routers.
+
+Instead of manually configuring static routes for every remote network,
+OSPF allows routers to learn those networks from other OSPF routers.
+
+Important OSPF concepts include:
+
+- Neighbor adjacencies
+- Link-state advertisements
+- Areas
+- Router IDs
+- Cost
+- Shortest Path First algorithm
+
+OSPF administrative distance:
+
+110
+
+
+OSPF DESIGN
+-----------
+
+This lab uses single-area OSPFv2.
+
+OSPF Process ID:
+
+1
+
+Area:
+
+0
+
+Router IDs:
+
+R1 = 1.1.1.1
+R2 = 2.2.2.2
+
+Area 0 is the OSPF backbone area.
+
+A single-area design was used because it demonstrates the important OSPF
+fundamentals without adding unnecessary multi-area complexity.
+
+
+R1 OSPF CONFIGURATION
+---------------------
+
+router ospf 1
+ router-id 1.1.1.1
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
+ network 203.0.113.0 0.0.0.7 area 0
+ default-information originate
+
+
+R2 OSPF CONFIGURATION
+---------------------
+
+router ospf 1
+ router-id 2.2.2.2
+ network 203.0.113.0 0.0.0.7 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+
+
+NETWORK STATEMENTS AND WILDCARD MASKS
+-------------------------------------
+
+OSPF network statements identify interfaces that should participate in OSPF.
+
+Example:
+
+network 192.168.40.0 0.0.0.255 area 0
+
+The wildcard mask is the inverse of the subnet mask.
+
+Examples:
+
+Subnet Mask          Wildcard Mask
+255.255.255.0        0.0.0.255
+255.255.255.248      0.0.0.7
+
+Therefore:
+
+203.0.113.0/29
+
+uses:
+
+network 203.0.113.0 0.0.0.7 area 0
+
+A matching interface participates in OSPF and is placed into the specified
+OSPF area.
+
+
+OSPF NEIGHBOR ADJACENCY
+-----------------------
+
+R1 and R2 formed an OSPF adjacency across the shared WAN network.
+
+Verification:
+
+show ip ospf neighbor
+
+R1 displayed:
+
+Neighbor ID     State       Address
+2.2.2.2         FULL/BDR    203.0.113.3
+
+FULL indicates that the routers formed a complete OSPF adjacency and
+synchronized their OSPF information.
+
+
+DR AND BDR
+----------
+
+The R1-R2 OSPF connection uses a broadcast Ethernet network.
+
+OSPF performs a Designated Router (DR) and Backup Designated Router (BDR)
+election on broadcast networks.
+
+The neighbor output on R1 showed:
+
+FULL/BDR
+
+R2 was therefore acting as the Backup Designated Router on this Ethernet
+segment.
+
+DR and BDR elections reduce the number of OSPF adjacencies required when
+multiple OSPF routers share a broadcast network.
+
+
+ROUTES LEARNED BY R2
+--------------------
+
+Before OSPF, R2 knew only its directly connected networks:
+
+203.0.113.0/29
+192.168.40.0/24
+
+R2 had no route to the HQ VLANs.
+
+After the OSPF adjacency formed, R2 learned:
+
+O 192.168.10.0/24 via 203.0.113.2
+O 192.168.20.0/24 via 203.0.113.2
+O 192.168.30.0/24 via 203.0.113.2
+O 192.168.99.0/24 via 203.0.113.2
+
+Example:
+
+O 192.168.10.0/24 [110/2] via 203.0.113.2
+
+O   = OSPF-learned route
+110 = OSPF administrative distance
+2   = OSPF cost
+203.0.113.2 = next-hop R1
+
+
+ROUTE LEARNED BY R1
+-------------------
+
+R1 dynamically learned:
+
+O 192.168.40.0/24 via 203.0.113.3
+
+This tells R1 that the branch network is reachable through R2.
+
+Before OSPF, R1 had no route to 192.168.40.0/24.
+
+
+HQ / BRANCH CONNECTIVITY
+------------------------
+
+Before OSPF:
+
+Branch-PC could reach its gateway:
+
+192.168.40.1
+
+but could not reach the HQ networks.
+
+After OSPF:
+
+Branch-PC successfully reached HQ devices, including PC1.
+
+This verified that:
+
+- R2 learned the HQ routes
+- R1 learned the branch route
+- Forward routing worked
+- Return routing worked
+
+
+DEFAULT ROUTE ADVERTISEMENT
+---------------------------
+
+R1 already contained a static default route toward ISP-R1:
+
+ip route 0.0.0.0 0.0.0.0 203.0.113.1
+
+R1 displayed:
+
+S* 0.0.0.0/0 [1/0] via 203.0.113.1
+
+Initially, R2 displayed:
+
+Gateway of last resort is not set
+
+R1 was then configured with:
+
+router ospf 1
+ default-information originate
+
+This caused R1 to advertise its default route into OSPF.
+
+R2 then learned:
+
+O*E2 0.0.0.0/0 [110/1] via 203.0.113.2
+
+O   = OSPF
+*   = Candidate default route
+E2  = OSPF External Type 2
+
+The route is considered external because the original default route is a
+static route rather than a route originating within OSPF.
+
+R2 can therefore send destinations not otherwise found in its routing table
+toward R1.
+
+
+BRANCH NAT/PAT
+--------------
+
+Branch Internet connectivity required NAT/PAT on R2.
+
+R2's branch-facing interface was configured as NAT inside:
+
+interface g0/0/1
+ ip nat inside
+
+R2's WAN-facing interface was configured as NAT outside:
+
+interface g0/0/0
+ ip nat outside
+
+NAT ACL:
+
+access-list 1 permit 192.168.40.0 0.0.0.255
+
+PAT:
+
+ip nat inside source list 1 interface g0/0/0 overload
+
+
+BRANCH PAT OPERATION
+--------------------
+
+When Branch-PC sends traffic to the external server:
+
+Original packet:
+
+Source:
+192.168.40.10
+
+Destination:
+198.51.100.10
+
+R2 performs PAT:
+
+192.168.40.10 -> 203.0.113.3
+
+The destination remains:
+
+198.51.100.10
+
+R2 then follows its OSPF-learned default route:
+
+0.0.0.0/0 -> 203.0.113.2
+
+The packet therefore travels to R1.
+
+R1 does not perform NAT again because the source has already been translated
+to 203.0.113.3.
+
+R1 uses its static default route and forwards the packet toward:
+
+203.0.113.1
+
+ISP-R1 then routes the packet to the external server.
+
+
+VERIFIED INTERNET PATH
+----------------------
+
+Traceroute from Branch-PC to 198.51.100.10 showed:
+
+Hop 1:
+192.168.40.1
+
+Hop 2:
+203.0.113.2
+
+Hop 3:
+203.0.113.1
+
+Hop 4:
+198.51.100.10
+
+Therefore:
+
+Branch-PC
+    |
+    v
+R2
+    |
+    | PAT
+    v
+R1
+    |
+    | Static Default Route
+    v
+ISP-R1
+    |
+    v
+External Server
+
+
+ROUTING VS NAT
+--------------
+
+OSPF and NAT perform different functions.
+
+OSPF answers:
+
+"Where should this packet be sent to reach another network?"
+
+NAT/PAT answers:
+
+"How should private addresses be translated when communicating through
+an outside network?"
+
+OSPF provided dynamic reachability between HQ and the branch.
+
+PAT allowed the privately addressed Branch-PC to communicate with the
+simulated external network.
+
+
+LAYER 2 VS LAYER 3 PATH SELECTION
+---------------------------------
+
+R1, R2, and ISP-R1 are physically attached to the same Layer 2 WAN switch.
+
+The switch does not determine the IP routing path.
+
+R2 contains:
+
+O*E2 0.0.0.0/0 via 203.0.113.2
+
+Therefore, R2 sends unknown destinations to R1.
+
+The WAN switch simply forwards the Ethernet frame toward R1's MAC address.
+
+It does not decide that ISP-R1 would be a better Layer 3 next hop.
+
+
+CENTRALIZED VS LOCAL INTERNET BREAKOUT
+--------------------------------------
+
+The lab uses a centralized routing path:
+
+Branch -> R2 -> R1 -> ISP -> External Network
+
+A real organization may intentionally send branch Internet traffic through
+HQ so centralized security systems can inspect and control the traffic.
+
+Examples include:
+
+- Firewalls
+- IDS/IPS
+- Web filtering
+- Logging
+- Security monitoring
+
+Another possible design is local Internet breakout:
+
+Branch -> Branch Router -> Local ISP -> Internet
+
+OSPF or another routing protocol could still be used for corporate
+HQ/branch traffic while Internet traffic uses the local ISP.
+
+Local breakout may provide a more direct Internet path but requires
+appropriate security controls at the branch.
+
+
+USEFUL COMMANDS
+---------------
+
+show ip ospf neighbor
+
+Displays OSPF neighbors and adjacency states.
+
+
+show ip protocols
+
+Displays information about configured routing protocols.
+
+
+show ip route
+
+Displays the complete IP routing table.
+
+
+show ip route ospf
+
+Displays OSPF-learned routes.
+
+
+show ip nat statistics
+
+Displays NAT configuration and statistics.
+
+
+show ip nat translations
+
+Displays active NAT/PAT translations.
+
+
+show access-lists
+
+Displays configured ACLs and match counters.
+
+
+show ip interface brief
+
+Provides a quick summary of interface addresses and status.
+
+
+ping <destination>
+
+Tests IP reachability.
+
+
+tracert <destination>
+
+Shows the Layer 3 path from a Packet Tracer PC.
+
+
+KEY TAKEAWAYS
+-------------
+
+1. OSPF dynamically exchanges routes between routers.
+
+2. OSPF has a default administrative distance of 110.
+
+3. OSPF uses cost as its routing metric.
+
+4. Router IDs uniquely identify OSPF routers.
+
+5. FULL indicates a complete OSPF adjacency.
+
+6. Area 0 is the OSPF backbone area.
+
+7. OSPF network statements use wildcard masks.
+
+8. "O" identifies an OSPF-learned route.
+
+9. R2 dynamically learned all HQ networks from R1.
+
+10. R1 dynamically learned the branch network from R2.
+
+11. "default-information originate" allowed R1 to advertise its existing
+    default route to R2.
+
+12. "O*E2" identified the OSPF-learned external default route on R2.
+
+13. OSPF and NAT/PAT solve different networking problems.
+
+14. Layer 2 switches forward frames but do not override router Layer 3
+    path-selection decisions.
+
+15. Ping verifies reachability while traceroute helps identify the actual
+    Layer 3 path.
+
+16. Dynamic routing allowed the branch to be integrated without manually
+    configuring static routes for every HQ and branch subnet.
