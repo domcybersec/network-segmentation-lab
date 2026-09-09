@@ -1,468 +1,936 @@
 # Network Segmentation Lab
 
-This project documents my CCNA-focused Packet Tracer Labs.
+This project documents my CCNA-focused Cisco Packet Tracer lab environment.
+
+The lab began as a basic router-and-switch topology and has been progressively expanded into a small enterprise-style network incorporating VLAN segmentation, inter-VLAN routing, access control, DHCP, secure management, NAT/PAT, Layer 2 security, redundancy, EtherChannel, and dynamic routing.
 
 ## Goals
-- Learn networking fundamentals
-- Practice subnetting and routing
-- Build hands-on lab experience 
+
+- Learn and reinforce networking fundamentals
+- Practice subnetting, switching, and routing
+- Develop hands-on Cisco IOS experience
+- Practice structured network troubleshooting
+- Integrate networking technologies into a single evolving topology
+- Build a documented networking portfolio using Git and GitHub
 
 ## Tools
+
 - Cisco Packet Tracer
-- Git & GitHub
+- Cisco IOS CLI
+- Git
+- GitHub
 - VS Code
 
-## Labs Completed
+---
 
-#### Basic Topology Lab
+# Labs Completed
+
+## Module 1 - Basic Topology
+
+### Overview
+
+Built the initial router, switch, and end-device topology and established basic IPv4 connectivity.
+
+### Implemented
+
 - Configured router and switch connectivity
-- Assigned static IP Addresses
-- Verified PC to PC and PC to Router connectivity via Ping
-- Troubleshot interface issues
-##### Basic Topology Lab Lessons Learned
-- Learned functional differences between switches and routers
-- Learned the difference between administratively down and operational interfaces
-- Learned why it is important to be careful with how you designate IP addresses
-- Practiced troubleshooting logical and physical connectivity 
-- Improved familiarity with Cisco CLI navigation
-#### VLAN Segmentation Lab
+- Assigned static IPv4 addresses
+- Verified PC-to-PC connectivity
+- Verified PC-to-router connectivity
+- Troubleshot physical and logical interface issues
+- Practiced Cisco IOS CLI navigation
+
+### Lessons Learned
+
+- Functional differences between routers and switches
+- Difference between administratively down and operationally down interfaces
+- Importance of proper IP addressing
+- Basic physical and logical connectivity troubleshooting
+- Cisco IOS configuration and verification workflow
+
+---
+
+## Module 2 - VLAN Segmentation
+
+### Overview
+
+Introduced logical network segmentation by separating HR, IT, and Guest devices into individual VLANs.
+
+### Implemented
+
 - Created VLANs for HR, IT, and Guest departments
-- Assigned switch access ports to specific VLANs
-- Configured static IP addressing for each department subnet
-- Verified same-VLAN connectivity using ping testing
-- Verified VLAN isolation by testing failed communication between different VLANs
-- Used show vlan brief to validate VLAN assignments
-##### VLAN Segmentation - VLAN Design 
+- Assigned access ports to specific VLANs
+- Configured separate IPv4 subnets
+- Verified same-VLAN connectivity
+- Verified isolation between different VLANs
+- Used `show vlan brief` for validation
+
+### VLAN Design
+
 | VLAN | Department | Network |
-|------|-------------|----------|
-| 10 | HR | 192.168.10.0/24 |
-| 20 | IT | 192.168.20.0/24 |
-| 30 | Guest | 192.168.30.0/24 |
-##### VLAN Segmentation - Lessons Learned
-- VLANs provide logical segmentation even on the same physical switch
-- Devices in different VLANs cannot communicate without Layer 3 routing
+|---|---|---|
+| 10 | HR | `192.168.10.0/24` |
+| 20 | IT | `192.168.20.0/24` |
+| 30 | Guest | `192.168.30.0/24` |
+
+### Lessons Learned
+
+- VLANs provide logical segmentation on shared switching infrastructure
+- Devices in different VLANs require Layer 3 routing to communicate
 - Access ports assign end devices to specific VLANs
 - VLAN segmentation improves organization and security
-- Proper VLAN planning reduces unnecessary broadcast traffic
-- show vlan brief is useful for verifying VLAN assignments and switch port membership
-#### VLAN Trunking Lab
-- Configured trunk links between multiple switches
-- Extended VLANs across separate switches using trunk ports
-- Verified same-VLAN communication across switches
-- Verified VLAN isolation between separate VLANs
-- Used trunk verification commands for troubleshooting and validation
+- VLAN design reduces unnecessary broadcast domains
+- `show vlan brief` is useful for validating VLAN assignments
 
-##### VLAN Trunking - Connectivity Verification
-- HR VLAN devices successfully communicated across switches through trunk links
-- Devices in separate VLANs remained isolated without Layer 3 routing
+---
+
+## Module 3 - VLAN Trunking
+
+### Overview
+
+Expanded the network to multiple switches and extended VLANs between them using 802.1Q trunk links.
+
+### Implemented
+
+- Configured trunk links between switches
+- Extended VLANs across multiple switches
+- Verified same-VLAN communication across switches
+- Verified isolation between separate VLANs
+- Used trunk verification commands for troubleshooting
+
+### Verification
+
+- HR devices successfully communicated across switches
+- Devices in separate VLANs remained isolated before Layer 3 routing
 - Verified VLAN assignments using `show vlan brief`
 - Verified trunk operation using `show interfaces trunk`
 
-##### VLAN Trunking - Lessons Learned
-- Trunk ports allow multiple VLANs to traverse between switches
-- Access ports are used for end devices while trunk ports connect networking devices
-- VLANs can span multiple switches through trunk links
-- Proper trunk configuration is critical for VLAN communication between switches
-- Layer 2 switching alone does not allow communication between separate VLANs
-#### Inter-VLAN Routing Lab
-- Configured router-on-a-stick inter-VLAN routing
-- Created router subinterfaces for VLAN 10, VLAN 20, and VLAN 30
-- Configured 802.1Q encapsulation on router subinterfaces
-- Assigned default gateways for each VLAN
-- Verified successful communication between separate VLANs
-- Used ping and tracert for routing verification and troubleshooting
+### Lessons Learned
 
-##### Inter-VLAN Routing - Gateway Design
+- Trunks allow multiple VLANs to traverse a single link
+- Access ports connect endpoint devices
+- Trunk ports commonly connect network infrastructure
+- VLANs can span multiple switches
+- Layer 2 switching alone cannot provide inter-VLAN communication
+
+---
+
+## Module 4 - Inter-VLAN Routing
+
+### Overview
+
+Implemented router-on-a-stick routing to provide Layer 3 connectivity between VLANs.
+
+### Implemented
+
+- Configured router-on-a-stick
+- Created router subinterfaces for VLANs 10, 20, and 30
+- Configured 802.1Q encapsulation
+- Assigned default gateways to each VLAN
+- Verified inter-VLAN communication
+- Used `ping` and `tracert` for troubleshooting
+
+### Gateway Design
 
 | VLAN | Gateway |
-|------|----------|
-| 10 | 192.168.10.1 |
-| 20 | 192.168.20.1 |
-| 30 | 192.168.30.1 |
+|---|---|
+| 10 | `192.168.10.1` |
+| 20 | `192.168.20.1` |
+| 30 | `192.168.30.1` |
 
-##### Inter-VLAN Routing - Lessons Learned
-- Routers enable communication between separate VLANs
-- Router subinterfaces act as default gateways for VLANs
-- 802.1Q encapsulation allows multiple VLANs to traverse a single physical interface
-- Default gateway configuration is critical for inter-network communication
-- tracert can help identify where communication failures occur in the network path
-- Endpoint misconfigurations can prevent connectivity even when routing infrastructure is functioning properly
-#### ACL Segmentation & Security Lab
-- Configured extended ACLs to enforce VLAN security policies
-- Created a named extended ACL (`GUEST-FILTER`) to restrict Guest VLAN access
-- Applied ACL filtering inbound on the Guest VLAN router subinterface
-- Denied Guest VLAN access to HR and IT networks
-- Permitted authorized inter-VLAN communication between trusted departments
-- Verified ACL functionality through successful and failed ping testing
+### Lessons Learned
 
-##### ACL Security Policy
+- Routers provide communication between separate VLANs
+- Router subinterfaces can serve as VLAN default gateways
+- 802.1Q allows multiple VLANs to share one physical router interface
+- Correct default gateway configuration is required for routed communication
+- `tracert` helps identify where traffic stops
+- Endpoint configuration errors can cause failures even when infrastructure is working correctly
 
-| Source VLAN | Destination VLAN | Result |
-|-------------|------------------|--------|
+---
+
+## Module 5 - ACL Segmentation and Security
+
+### Overview
+
+Implemented extended access control lists to enforce security boundaries between trusted and untrusted VLANs.
+
+### Implemented
+
+- Created the named extended ACL `GUEST-FILTER`
+- Applied the ACL inbound on the Guest VLAN router subinterface
+- Denied Guest access to HR
+- Denied Guest access to IT
+- Allowed trusted internal communication
+- Allowed required ICMP return traffic
+- Verified policies using successful and failed ping tests
+
+### Security Policy
+
+| Source | Destination | Result |
+|---|---|---|
 | Guest | HR | Denied |
 | Guest | IT | Denied |
 | HR | IT | Permitted |
 | IT | HR | Permitted |
+| HR / IT | Guest | Permitted |
 
-##### ACL Segmentation - Lessons Learned
-- Extended ACLs can filter traffic based on source and destination networks
-- ACLs are processed top-down and stop at the first matching rule
-- ACL placement is important for both efficiency and security
-- Inbound ACLs filter traffic as it enters an interface
-- Named ACLs improve readability and management compared to numbered ACLs
-- The implicit deny statement at the end of ACLs can unintentionally block traffic if permit rules are not configured properly
-- Applying ACLs close to the traffic source reduces unnecessary routed traffic
-#### DHCP Infrastructure Services Lab
-- Configured DHCP services on the router for multiple VLANs
-- Created separate DHCP pools for HR, IT, and Guest VLANs
-- Configured excluded addresses to reserve default gateway IPs
-- Configured automatic distribution of IP addresses, subnet masks, default gateways, and DNS settings
-- Converted end devices from static addressing to DHCP assignment
-- Verified successful automatic IP assignment across all VLANs
-- Maintained ACL-based Guest VLAN restrictions while implementing DHCP services
-- Used ping and tracert to troubleshoot DHCP and ACL-related connectivity issues
+### Lessons Learned
 
-##### DHCP Pool Design
+- Extended ACLs can filter by source and destination
+- ACL entries are processed from top to bottom
+- Processing stops at the first matching rule
+- ACL placement affects efficiency and security
+- Inbound ACLs filter packets as they enter an interface
+- Named ACLs improve readability
+- The implicit deny can unintentionally block traffic
+- Traditional ACLs are stateless and may require explicit return-traffic rules
+
+---
+
+## Module 6 - DHCP Infrastructure Services
+
+### Overview
+
+Replaced static endpoint addressing with centralized DHCP services hosted on R1.
+
+### Implemented
+
+- Configured DHCP pools for HR, IT, and Guest VLANs
+- Configured excluded addresses
+- Distributed IPv4 addresses automatically
+- Distributed subnet masks automatically
+- Distributed default gateways automatically
+- Distributed DNS configuration
+- Converted endpoints from static addressing to DHCP
+- Preserved existing ACL security policies
+
+### DHCP Design
 
 | VLAN | Network | Default Gateway |
-|------|----------|----------------|
-| 10 | 192.168.10.0/24 | 192.168.10.1 |
-| 20 | 192.168.20.0/24 | 192.168.20.1 |
-| 30 | 192.168.30.0/24 | 192.168.30.1 |
+|---|---|---|
+| 10 | `192.168.10.0/24` | `192.168.10.1` |
+| 20 | `192.168.20.0/24` | `192.168.20.1` |
+| 30 | `192.168.30.0/24` | `192.168.30.1` |
 
-##### DHCP Infrastructure Services - Troubleshooting
-- Verified DHCP clients were receiving valid IP configurations
-- Used tracert to identify that traffic was reaching the router but failing due to ACL behavior
-- Determined that ICMP echo replies from the Guest VLAN were being blocked by the extended ACL
-- Modified the named ACL (`GUEST-FILTER`) to permit ICMP echo replies from the Guest VLAN to internal VLANs
-- Adjusted ACL rule ordering to ensure permit statements were processed before deny entries
-- Retested connectivity successfully after ACL modification
+### Troubleshooting
 
-##### DHCP Infrastructure Services - Lessons Learned
-- DHCP automates IP address assignment and simplifies network management
-- Excluded addresses prevent critical infrastructure IPs from being assigned dynamically
-- ACLs can unintentionally block return traffic if protocols are not explicitly permitted
-- ACL rule order is critical because ACLs are processed top-down
-- ICMP troubleshooting tools such as ping and tracert are useful for isolating routing and filtering issues
-- Infrastructure services must be validated alongside existing security controls
-- Centralized DHCP configuration improves scalability and consistency across VLANs
-#### Secure Management & SSH Lab
-- Configured secure remote management access using SSH
-- Created local administrator usernames and passwords
-- Configured VTY lines for remote authentication
-- Generated RSA keys for SSH encryption
-- Restricted remote management access to SSH only
-- Successfully established SSH connections from PC1 to R1, SW1, and SW2
-- Disabled insecure Telnet-based remote access
+During testing, `tracert` showed that traffic reached the router but ICMP replies returning from the Guest VLAN were blocked by the existing ACL.
 
-##### SSH Configuration Features
-- Local user authentication
-- RSA key generation
-- SSH Version 2
-- VTY line configuration
-- Secure remote CLI management
+The `GUEST-FILTER` ACL was updated to explicitly permit required ICMP echo replies before the Guest-to-internal deny statements.
 
-##### Secure Management & SSH - Troubleshooting
-- Initial SSH connectivity issues occurred when using 2048-bit RSA keys in Packet Tracer
-- Determined the issue was related to emulator limitations rather than configuration errors
-- Regenerated RSA keys using 1024-bit encryption, which resolved the issue
-- Verified successful SSH connectivity to all managed network devices
+### Lessons Learned
 
-##### Secure Management & SSH - Lessons Learned
-- SSH provides encrypted remote management access for network devices
-- RSA keys are required for SSH functionality
-- VTY lines control remote administrative access
+- DHCP simplifies endpoint configuration
+- Excluded addresses protect infrastructure IP assignments
+- ACLs can unintentionally affect return traffic
+- ACL rule ordering is critical
+- `ping` and `tracert` are useful for isolating routing and filtering issues
+- New infrastructure services should always be tested against existing security controls
+- Centralized DHCP improves consistency and scalability across VLANs
+
+---
+
+## Module 7 - Secure Management and SSH
+
+### Overview
+
+Implemented encrypted remote CLI management for the router and switches.
+
+### Implemented
+
+- Configured local administrator accounts
+- Configured SSH Version 2
+- Generated RSA keys
+- Configured VTY authentication
+- Restricted VTY access to SSH
+- Disabled Telnet remote access
+- Configured Management VLAN 99
+- Successfully connected from PC1 to R1, SW1, and SW2 using SSH
+
+### Management Addresses
+
+| Device | Address |
+|---|---|
+| R1 | `192.168.99.1` |
+| SW1 | `192.168.99.2` |
+| SW2 | `192.168.99.3` |
+
+### Troubleshooting
+
+Packet Tracer failed when 2048-bit RSA keys were used.
+
+RSA keys were regenerated using 1024 bits due to simulator limitations, after which SSH connectivity succeeded.
+
+### Lessons Learned
+
+- SSH provides encrypted device administration
+- RSA keys are required for SSH operation
+- VTY lines control remote CLI access
 - Local authentication improves management security
-- Telnet is insecure because traffic is transmitted in plaintext
-- Emulator environments may have limitations that differ from real enterprise hardware
-- Troubleshooting should isolate whether issues are configuration-related or platform-related
-### NAT/PAT and Simulated Internet Connectivity
+- Telnet transmits management traffic insecurely
+- Simulator limitations can differ from physical Cisco hardware
+- Troubleshooting should distinguish configuration problems from platform limitations
 
-Expanded the enterprise topology with an ISP router and external server to simulate Internet connectivity.
+---
 
-Implemented:
+## Module 8 - NAT/PAT and Simulated Internet Connectivity
 
-- ISP-facing routed connection using 203.0.113.0/30
-- Simulated external server network using 198.51.100.0/24
-- Static default routing toward the ISP
-- NAT inside/outside interface designation
-- Standard ACL for identifying internal NAT traffic
-- PAT/NAT overload using the router's outside interface
-- Internet connectivity for HR, IT, Guest, and Management networks
-- Verification of NAT translations and statistics
-- Validation that existing Guest VLAN ACL segmentation remained intact
+### Overview
 
-Key commands:
+Expanded the topology with an ISP router and external server to simulate Internet connectivity.
 
-    ip route 0.0.0.0 0.0.0.0 203.0.113.1
-    ip nat inside
-    ip nat outside
-    ip nat inside source list 1 interface g0/0/1 overload
-    show ip nat translations
-    show ip nat statistics
-    ### Port Security & Switch Hardening
+### Implemented
 
-Implemented Layer 2 access-port security and additional switch hardening on SW1 and SW2.
+- Added ISP-R1
+- Added an external server network
+- Configured a static default route toward the ISP
+- Configured NAT inside and outside interfaces
+- Configured a standard ACL for NAT classification
+- Configured PAT using NAT overload
+- Provided external connectivity to internal VLANs
+- Verified NAT translations and statistics
+- Confirmed Guest VLAN ACL restrictions remained operational
 
-Implemented:
+### External Networks
 
-- Port Security on user-facing access ports
-- Maximum of one secure MAC address per endpoint port
-- Sticky MAC address learning
-- Shutdown violation mode
-- Simulated unauthorized-device Port Security violation
-- Administrative recovery of a secure-shutdown interface
-- VLAN 999 as a black-hole VLAN for unused interfaces
-- Administrative shutdown of unused switchports
-- Verification of secure MAC addresses and Port Security status
+| Network | Purpose |
+|---|---|
+| `203.0.113.0/29` | WAN / transit network |
+| `198.51.100.0/24` | Simulated external server network |
 
-Key commands:
+The WAN originally used `203.0.113.0/30` and was later expanded to `/29` during the OSPF branch expansion.
 
-    switchport port-security
-    switchport port-security maximum 1
-    switchport port-security violation shutdown
-    switchport port-security mac-address sticky
-    show port-security
-    show port-security address
-    show port-security interface fa0/1
-### STP / RSTP & Layer 2 Redundancy
+### Key Commands
 
-Expanded the network to a three-switch redundant topology and implemented Spanning Tree Protocol.
+```text
+ip route 0.0.0.0 0.0.0.0 203.0.113.1
 
-Implemented and tested:
+ip nat inside
+ip nat outside
 
-- STP root bridge election
-- Root, Designated, and Alternate port roles
-- STP path-cost selection
-- Intentional SW1 primary / SW2 secondary root design
-- Redundant Layer 2 link failover
-- Rapid PVST+ migration
-- Rapid STP convergence testing
-- PortFast on endpoint-facing interfaces
-- BPDU Guard
-- Simulated rogue-switch BPDU Guard violation
-- Post-change connectivity and security verification
+ip nat inside source list 1 interface g0/0/1 overload
 
-MODULE 11 - ETHERCHANNEL / LACP
-===============================
+show ip nat translations
+show ip nat statistics
+```
 
-OVERVIEW
---------
+### Lessons Learned
+
+- NAT translates addresses between network boundaries
+- PAT allows multiple internal hosts to share one outside address
+- NAT ACLs identify which source networks should be translated
+- Default routing provides a path toward unknown external destinations
+- Security policies should be regression-tested after Internet connectivity is introduced
+
+---
+
+## Module 9 - Port Security and Switch Hardening
+
+### Overview
+
+Implemented Layer 2 access-port security and hardened unused switch interfaces.
+
+### Implemented
+
+- Configured Port Security on endpoint-facing ports
+- Limited endpoint ports to one secure MAC address
+- Enabled sticky MAC learning
+- Configured shutdown violation mode
+- Simulated an unauthorized-device violation
+- Recovered a secure-shutdown access port
+- Created VLAN 999 as a black-hole VLAN
+- Assigned unused interfaces to VLAN 999
+- Administratively shut down unused ports
+
+### Key Commands
+
+```text
+switchport port-security
+switchport port-security maximum 1
+switchport port-security violation shutdown
+switchport port-security mac-address sticky
+
+show port-security
+show port-security address
+show port-security interface fa0/1
+```
+
+### Lessons Learned
+
+- Port Security can limit devices allowed on an access port
+- Sticky learning dynamically records secure MAC addresses
+- Shutdown mode disables a port after a violation
+- Secure-shutdown interfaces can be recovered administratively
+- Unused ports should be disabled and separated from production VLANs
+- Layer 2 security complements Layer 3 ACL controls
+
+---
+
+## Module 10 - STP / RSTP and Layer 2 Redundancy
+
+### Overview
+
+Expanded the switching topology to three switches and implemented redundant Layer 2 paths using Spanning Tree Protocol.
+
+### Implemented
+
+- Added SW3
+- Created a redundant triangular switch topology
+- Observed automatic STP root bridge election
+- Identified Root, Designated, and Alternate port roles
+- Analyzed STP path cost
+- Configured SW1 as primary root
+- Configured SW2 as secondary root
+- Tested redundant-link failover
+- Migrated to Rapid-PVST+
+- Tested faster convergence
+- Configured PortFast
+- Configured BPDU Guard
+- Simulated a rogue-switch BPDU Guard violation
+- Verified connectivity after topology changes
+
+### Root Bridge Design
+
+SW1 was configured as the primary root and SW2 as the secondary root for:
+
+- VLAN 10
+- VLAN 20
+- VLAN 30
+- VLAN 99
+
+### Redundancy Testing
+
+A redundant path was deliberately disabled to observe STP reconvergence.
+
+Rapid-PVST+ successfully selected an alternate forwarding path and restored connectivity.
+
+### PortFast and BPDU Guard
+
+PortFast was enabled only on endpoint-facing interfaces.
+
+BPDU Guard was configured to protect those interfaces from unexpected switches.
+
+A temporary rogue switch was connected to a protected access port and BPDU Guard successfully placed the port into a secure shutdown state.
+
+### Lessons Learned
+
+- STP prevents Layer 2 switching loops
+- Root bridge election depends on bridge priority and MAC address
+- STP chooses paths using cumulative cost
+- Redundant links may remain physically up while being logically blocked
+- Rapid-PVST+ converges faster than traditional STP
+- PortFast accelerates endpoint port forwarding
+- BPDU Guard protects endpoint-facing ports from unexpected switching devices
+- CLI verification is more reliable than Packet Tracer link colors when analyzing STP state
+
+---
+
+## Module 11 - EtherChannel / LACP
+
+### Overview
 
 Implemented an IEEE LACP EtherChannel between SW1 and SW2 to provide link aggregation and physical-link redundancy.
 
-Two FastEthernet links were bundled into the logical Port-channel1 interface and configured as an 802.1Q trunk.
+Two FastEthernet links were combined into logical interface `Port-channel1` and configured as an 802.1Q trunk.
 
-This module also demonstrated the interaction between EtherChannel and Rapid-PVST and tested connectivity during a physical member-link failure.
+### Physical Design
 
-
-IMPLEMENTATION
---------------
-
-Physical EtherChannel members:
-
+```text
 SW1 Fa0/21 <--> SW2 Fa0/21
 SW1 Fa0/22 <--> SW2 Fa0/22
+```
 
 Logical interface:
 
-Port-channel1 (Po1)
+```text
+Port-channel1
+```
 
 LACP mode:
 
-SW1 - Active
-SW2 - Active
+- SW1 - Active
+- SW2 - Active
 
-Port-channel1 was configured as an 802.1Q trunk carrying:
+### VLANs Carried
 
 - VLAN 10 - HR
 - VLAN 20 - IT
 - VLAN 30 - Guest
 - VLAN 99 - Management
 
-VLAN 999 was excluded because it is used as the blackhole/parking VLAN for unused switch ports.
+VLAN 999 was intentionally excluded because it is used as the black-hole VLAN for unused ports.
 
+### Configuration
 
-CONFIGURATION
--------------
+#### SW1
 
-SW1:
-
+```text
 interface range FastEthernet0/21 - 22
  switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
  channel-group 1 mode active
  no shutdown
 
 interface Port-channel1
  switchport mode trunk
  switchport trunk allowed vlan 10,20,30,99
+```
 
+#### SW2
 
-SW2:
-
+```text
 interface range FastEthernet0/21 - 22
  switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,99
  channel-group 1 mode active
  no shutdown
 
 interface Port-channel1
  switchport mode trunk
  switchport trunk allowed vlan 10,20,30,99
+```
 
+### Verification
 
-VERIFICATION
-------------
+Verified using:
 
-Successful LACP negotiation was verified with:
-
-show etherchannel summary
-
-Healthy EtherChannel:
-
-Po1(SU)   LACP   Fa0/21(P) Fa0/22(P)
-
-This confirmed that:
-
-- Po1 was operating as a Layer 2 EtherChannel.
-- The Port-channel was in use.
-- Fa0/21 and Fa0/22 were successfully bundled using LACP.
-
-Trunk operation was verified with:
-
-show interfaces trunk
-
-Port-channel1 successfully carried VLANs 10,20,30,99.
-
-
-SPANNING TREE INTEGRATION
--------------------------
-
-Rapid-PVST initially preferred the existing GigabitEthernet0/2 link between SW1 and SW2 because its STP cost was lower than the FastEthernet EtherChannel.
-
-SW2 initially showed:
-
-Gi0/2   Root FWD   Cost 4
-Po1     Altn BLK   Cost 12
-
-After the direct GigabitEthernet0/2 link was disabled, Rapid-PVST selected Port-channel1 as SW2's root path:
-
-Po1     Root FWD   Cost 12
-
-This demonstrated that spanning tree treats the EtherChannel as a single logical interface.
-
-
-REDUNDANCY TEST
----------------
-
-A physical member-link failure was simulated by shutting down SW2 Fa0/21.
-
-EtherChannel verification then showed:
-
-Po1(SU)   LACP   Fa0/21(D) Fa0/22(P)
-
-Port-channel1 remained operational through Fa0/22.
-
-During the failure:
-
-- Po1 remained up.
-- Rapid-PVST continued using Po1 as the root path.
-- PC2 successfully continued communicating with PC1.
-- End-to-end connectivity survived the physical member-link failure.
-
-This demonstrated the link redundancy provided by EtherChannel.
-
-
-TROUBLESHOOTING
----------------
-
-During initial testing, Packet Tracer produced inconsistent Rapid-PVST behavior after the original GigabitEthernet0/2 path was disabled.
-
-The EtherChannel configuration was removed, cleaned, and rebuilt.
-
-After rebuilding the LACP bundle, Port-channel1 correctly transitioned to the STP Root Forwarding state and host connectivity succeeded.
-
-Commands used for configuration verification and troubleshooting included:
-
+```text
 show etherchannel summary
 show interfaces port-channel 1
 show interfaces trunk
-show spanning-tree vlan 10
-show spanning-tree inconsistentports
-show running-config
+```
 
+Healthy EtherChannel:
 
-SKILLS DEMONSTRATED
--------------------
+```text
+Po1(SU)   LACP   Fa0/21(P) Fa0/22(P)
+```
+
+This confirmed:
+
+- Po1 was operating as a Layer 2 EtherChannel
+- The Port-channel was in use
+- Both member links were successfully bundled using LACP
+
+### Spanning Tree Integration
+
+Rapid-PVST initially preferred the existing GigabitEthernet0/2 link because it had a lower STP cost.
+
+```text
+Gi0/2   Root FWD   Cost 4
+Po1     Altn BLK   Cost 12
+```
+
+After G0/2 was disabled, Rapid-PVST selected the EtherChannel.
+
+```text
+Po1     Root FWD   Cost 12
+```
+
+This demonstrated that spanning tree treats an EtherChannel as one logical interface.
+
+### Redundancy Test
+
+SW2 Fa0/21 was deliberately shut down.
+
+EtherChannel then showed:
+
+```text
+Po1(SU)   LACP   Fa0/21(D) Fa0/22(P)
+```
+
+Despite losing one physical member:
+
+- Port-channel1 remained operational
+- Rapid-PVST continued using Po1
+- PC2 continued communicating with PC1
+- End-to-end connectivity was maintained
+
+### Troubleshooting
+
+Packet Tracer initially produced inconsistent Rapid-PVST behavior after the original G0/2 path was disabled.
+
+The EtherChannel configuration was removed, cleaned, and rebuilt.
+
+After rebuilding the LACP bundle:
+
+- Po1 formed successfully
+- STP selected Po1 correctly
+- End-to-end host connectivity succeeded
+- Member-link redundancy operated as expected
+
+### Skills Demonstrated
 
 - EtherChannel configuration
 - LACP negotiation
 - Layer 2 link aggregation
-- 802.1Q trunk configuration
-- Rapid-PVST and EtherChannel integration
-- STP path-cost analysis
-- Physical link redundancy
+- 802.1Q trunking
+- Rapid-PVST integration
+- STP cost analysis
+- Physical-link redundancy
 - Member-link failure testing
-- End-to-end connectivity verification
 - Cisco IOS troubleshooting
+
+---
+
 ## Module 12 - OSPF Dynamic Routing: HQ and Branch Connectivity
 
 ### Overview
 
-Expanded the existing enterprise network by adding a simulated branch location
-and implementing single-area OSPFv2 between the HQ and branch routers.
+Expanded the enterprise topology by adding a simulated branch location and implementing single-area OSPFv2 between the HQ and branch routers.
 
-The goal was to replace manual routing between locations with dynamic route
-exchange while integrating the new branch with the existing VLAN, NAT/PAT,
-ACL, and simulated Internet infrastructure.
+The branch was dynamically integrated with the existing VLAN, ACL, NAT/PAT, and simulated Internet infrastructure.
 
-### Topology
+### Added Devices
 
-The expanded network includes:
-
-- R1 - HQ router
 - R2 - Branch router
-- WAN-SW - Shared Layer 2 transit switch
 - SW4 - Branch access switch
 - Branch-PC
-- ISP-R1
-- External Server
+- WAN-SW - Shared Layer 2 transit switch
 
-HQ networks:
+### Network Design
 
-- `192.168.10.0/24` - HR
-- `192.168.20.0/24` - IT
-- `192.168.30.0/24` - Guest
-- `192.168.99.0/24` - Management
+#### HQ Networks
 
-Branch network:
+| Network | Purpose |
+|---|---|
+| `192.168.10.0/24` | HR |
+| `192.168.20.0/24` | IT |
+| `192.168.30.0/24` | Guest |
+| `192.168.99.0/24` | Management |
 
-- `192.168.40.0/24`
+#### Branch Network
 
-WAN/transit network:
+| Device / Network | Address |
+|---|---|
+| Branch LAN | `192.168.40.0/24` |
+| R2 Branch Gateway | `192.168.40.1` |
+| Branch-PC | `192.168.40.10` |
 
-- `203.0.113.0/29`
-- ISP-R1: `203.0.113.1`
-- R1: `203.0.113.2`
-- R2: `203.0.113.3`
+#### WAN / Transit Network
 
-### OSPF Implementation
+| Device | Address |
+|---|---|
+| ISP-R1 | `203.0.113.1` |
+| R1 | `203.0.113.2` |
+| R2 | `203.0.113.3` |
+
+Transit subnet:
+
+```text
+203.0.113.0/29
+```
+
+### OSPF Design
 
 Configured single-area OSPFv2 using Area 0.
 
 Router IDs:
 
-- R1: `1.1.1.1`
-- R2: `2.2.2.2`
+- R1 - `1.1.1.1`
+- R2 - `2.2.2.2`
 
-R1 advertises the four HQ networks while R2 advertises the branch LAN.
+R1 advertises:
 
-The routers successfully formed a FULL OSPF adjacency across the shared
-Ethernet WAN.
+- `192.168.10.0/24`
+- `192.168.20.0/24`
+- `192.168.30.0/24`
+- `192.168.99.0/24`
+- `203.0.113.0/29`
 
-R2 dynamically learned:
+R2 advertises:
+
+- `192.168.40.0/24`
+- `203.0.113.0/29`
+
+### R1 OSPF Configuration
+
+```text
+router ospf 1
+ router-id 1.1.1.1
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
+ network 203.0.113.0 0.0.0.7 area 0
+ default-information originate
+```
+
+### R2 OSPF Configuration
+
+```text
+router ospf 1
+ router-id 2.2.2.2
+ network 203.0.113.0 0.0.0.7 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+```
+
+### OSPF Verification
+
+R1 and R2 successfully formed a FULL OSPF adjacency.
+
+Example:
+
+```text
+Neighbor ID     State       Address
+2.2.2.2         FULL/BDR    203.0.113.3
+```
+
+R2 dynamically learned the HQ networks:
 
 ```text
 O 192.168.10.0/24 via 203.0.113.2
 O 192.168.20.0/24 via 203.0.113.2
 O 192.168.30.0/24 via 203.0.113.2
 O 192.168.99.0/24 via 203.0.113.2
+```
+
+R1 dynamically learned the branch network:
+
+```text
+O 192.168.40.0/24 via 203.0.113.3
+```
+
+### OSPF Routing Information
+
+Example R2 route:
+
+```text
+O 192.168.10.0/24 [110/2] via 203.0.113.2
+```
+
+Where:
+
+- `O` = OSPF-learned route
+- `110` = OSPF administrative distance
+- `2` = OSPF cost
+- `203.0.113.2` = next-hop router
+
+### Default Route Advertisement
+
+R1 maintains a static default route toward ISP-R1:
+
+```text
+S* 0.0.0.0/0 via 203.0.113.1
+```
+
+R1 was configured with:
+
+```text
+default-information originate
+```
+
+R2 then dynamically learned:
+
+```text
+O*E2 0.0.0.0/0 via 203.0.113.2
+```
+
+This allows unknown destinations from the branch to be forwarded toward R1.
+
+### Branch NAT/PAT
+
+R2 performs PAT for the branch LAN using its WAN interface.
+
+R2 NAT configuration:
+
+```text
+interface g0/0/1
+ ip nat inside
+
+interface g0/0/0
+ ip nat outside
+
+access-list 1 permit 192.168.40.0 0.0.0.255
+
+ip nat inside source list 1 interface g0/0/0 overload
+```
+
+Branch traffic is translated from:
+
+```text
+192.168.40.10
+```
+
+to:
+
+```text
+203.0.113.3
+```
+
+This allows the Branch-PC to communicate with the simulated external network.
+
+### Connectivity Verification
+
+Successfully verified:
+
+- R1-to-R2 OSPF adjacency
+- Branch-to-HQ communication
+- HQ-to-branch routing
+- Dynamic HQ route learning on R2
+- Dynamic branch route learning on R1
+- OSPF default-route propagation
+- Branch Internet connectivity
+- NAT/PAT operation
+- End-to-end routed path using traceroute
+
+Branch-PC successfully reached the external server:
+
+```text
+198.51.100.10
+```
+
+Traceroute showed:
+
+```text
+Branch-PC
+    |
+    v
+R2 - 192.168.40.1
+    |
+    v
+R1 - 203.0.113.2
+    |
+    v
+ISP-R1 - 203.0.113.1
+    |
+    v
+External Server - 198.51.100.10
+```
+
+### Routing vs NAT
+
+OSPF and NAT/PAT perform different functions.
+
+OSPF determines:
+
+```text
+Where should this packet be sent to reach another network?
+```
+
+NAT/PAT determines:
+
+```text
+How should private addresses be translated when communicating through an outside network?
+```
+
+OSPF provided dynamic HQ-to-branch routing, while PAT allowed the private Branch-PC address to communicate with the simulated external network.
+
+### Layer 2 vs Layer 3 Path Selection
+
+R1, R2, and ISP-R1 share the same Layer 2 WAN switch.
+
+Even though R2 and ISP-R1 are physically connected to the same switch, R2 follows its routing table.
+
+R2 learned:
+
+```text
+O*E2 0.0.0.0/0 via 203.0.113.2
+```
+
+Therefore, R2 sends unknown destinations to R1.
+
+The WAN switch forwards frames toward the selected next-hop MAC address but does not make Layer 3 routing decisions.
+
+### Centralized vs Local Internet Breakout
+
+The lab currently uses a centralized routing path:
+
+```text
+Branch -> R2 -> R1 -> ISP -> External Network
+```
+
+A real organization may use centralized Internet routing so branch traffic passes through shared security infrastructure such as:
+
+- Firewalls
+- IDS/IPS
+- Web filtering
+- Logging
+- Security monitoring
+
+An alternative design is local Internet breakout:
+
+```text
+Branch -> Branch Router -> Local ISP -> Internet
+```
+
+Dynamic routing can still be used for corporate HQ-to-branch traffic while Internet traffic follows the local ISP.
+
+### Skills Demonstrated
+
+- OSPFv2 configuration
+- Single-area OSPF
+- Router ID configuration
+- OSPF neighbor adjacency
+- Wildcard masks
+- Dynamic route propagation
+- Routing table interpretation
+- Administrative distance
+- OSPF cost
+- DR/BDR concepts
+- Default route advertisement
+- OSPF external routes
+- HQ/branch network integration
+- NAT/PAT integration
+- Layer 2 vs Layer 3 path analysis
+- Ping and traceroute verification
+
+---
+
+# Current Network Technologies
+
+The project currently incorporates:
+
+- IPv4 addressing and subnetting
+- VLAN segmentation
+- 802.1Q trunking
+- Router-on-a-stick
+- Inter-VLAN routing
+- Extended ACLs
+- DHCP
+- Management VLANs
+- SSH
+- NAT/PAT
+- Static default routing
+- Port Security
+- Black-hole VLANs
+- STP
+- Rapid-PVST+
+- PortFast
+- BPDU Guard
+- EtherChannel
+- LACP
+- OSPFv2
+- Dynamic route propagation
+- OSPF default-route advertisement
+
+---
+
+# Project Roadmap
+
+## Completed
+
+- [x] Module 1 - Basic Topology
+- [x] Module 2 - VLAN Segmentation
+- [x] Module 3 - VLAN Trunking
+- [x] Module 4 - Inter-VLAN Routing
+- [x] Module 5 - ACL Segmentation and Security
+- [x] Module 6 - DHCP Infrastructure Services
+- [x] Module 7 - Secure Management and SSH
+- [x] Module 8 - NAT/PAT and Simulated Internet Connectivity
+- [x] Module 9 - Port Security and Switch Hardening
+- [x] Module 10 - STP / RSTP and Layer 2 Redundancy
+- [x] Module 11 - EtherChannel / LACP
+- [x] Module 12 - OSPF Dynamic Routing
+
+## Planned
+
+- [ ] Module 13 - IPv6
+- [ ] Network Services and Monitoring
+- [ ] NTP
+- [ ] Syslog
+- [ ] SNMP
+- [ ] CDP / LLDP
+- [ ] Final Security Hardening
+- [ ] Final Troubleshooting and Documentation Review
