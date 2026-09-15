@@ -1,0 +1,108 @@
+R2#show run
+Building configuration...
+
+Current configuration : 1217 bytes
+!
+version 15.4
+no service timestamps log datetime msec
+no service timestamps debug datetime msec
+no service password-encryption
+!
+hostname R2
+!
+!
+!
+!
+!
+!
+!
+!
+ip cef
+ipv6 unicast-routing
+!
+no ipv6 cef
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+spanning-tree mode pvst
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0/0
+ ip address 203.0.113.3 255.255.255.248
+ ip nat outside
+ duplex auto
+ speed auto
+ ipv6 address 2001:DB8:113::3/64
+ ipv6 ospf 1 area 0
+!
+interface GigabitEthernet0/0/1
+ description Branch-LAN
+ ip address 192.168.40.1 255.255.255.0
+ ip nat inside
+ duplex auto
+ speed auto
+ ipv6 address 2001:DB8:40::1/64
+ ipv6 ospf 1 area 0
+!
+interface GigabitEthernet0/0/2
+ no ip address
+ duplex auto
+ speed auto
+ shutdown
+!
+interface Vlan1
+ mac-address 00e0.a3c6.4601
+ no ip address
+ shutdown
+!
+router ospf 1
+ router-id 2.2.2.2
+ log-adjacency-changes
+ network 203.0.113.0 0.0.0.7 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+!
+ipv6 router ospf 1
+ router-id 2.2.2.2
+ log-adjacency-changes
+!
+ip nat inside source list 1 interface GigabitEthernet0/0/0 overload
+ip classless
+!
+ip flow-export version 9
+!
+!
+access-list 1 permit 192.168.40.0 0.0.0.255
+!
+!
+!
+!
+!
+line con 0
+!
+line aux 0
+!
+line vty 0 4
+ login
+!
+!
+ntp server 192.168.50.10
+!
+end
+
+
+R2#

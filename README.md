@@ -1172,3 +1172,133 @@ show ipv6 access-list
 - IPv6 ACL configuration
 - Dual-stack security validation
 - IPv6 connectivity troubleshooting
+## Module 14 - Network Time Protocol (NTP)
+
+### Overview
+
+Expanded the enterprise network with a dedicated infrastructure-services VLAN and centralized Network Time Protocol (NTP) server. Routers and switches were configured to use a common time source to provide consistent timestamps for future logging, monitoring, troubleshooting, and security analysis.
+
+This module also required troubleshooting several supporting network services, including inter-VLAN routing, PAT, OSPF route installation, switch management connectivity, and Packet Tracer NTP behavior.
+
+### Network Services VLAN
+
+A dedicated server network was created to separate infrastructure services from network-device management.
+
+| Component | Configuration |
+|---|---|
+| VLAN | 50 - SERVERS |
+| Network | 192.168.50.0/24 |
+| Default Gateway | 192.168.50.1 |
+| Infrastructure Server | 192.168.50.10 |
+| Server Access Port | SW1 Fa0/3 |
+| NTP Transport | UDP/123 |
+
+R1 provides routing for the server VLAN through a new router-on-a-stick subinterface:
+
+```text
+interface GigabitEthernet0/0/0.50
+ description SERVERS
+ encapsulation dot1Q 50
+ ip address 192.168.50.1 255.255.255.0
+ ip nat inside
+```
+
+SW1 was updated to carry VLAN 50 between the switch and R1:
+
+```text
+interface GigabitEthernet0/1
+ switchport trunk allowed vlan 10,20,30,50,99
+```
+
+### Centralized NTP
+
+The infrastructure server at `192.168.50.10` was configured as the centralized NTP source for enterprise network devices.
+
+Client configuration:
+
+```text
+ntp server 192.168.50.10
+```
+
+Successful synchronization was verified using:
+
+```text
+show ntp associations
+show ntp status
+show clock
+```
+
+Healthy clients selected the infrastructure server as their system peer and reported synchronized clocks.
+
+Example:
+
+```text
+*~192.168.50.10
+Clock is synchronized, stratum 2, reference is 192.168.50.10
+```
+
+### OSPF Integration
+
+Because VLAN 50 was created after the original OSPF implementation, R1 was updated to advertise the new server network:
+
+```text
+router ospf 1
+ network 192.168.50.0 0.0.0.255 area 0
+```
+
+R2 subsequently learned the server network dynamically:
+
+```text
+Routing entry for 192.168.50.0/24
+Known via "ospf 1", distance 110, metric 2, type intra area
+Last update from 203.0.113.2 on GigabitEthernet0/0/0
+```
+
+Branch-to-server connectivity was verified with a successful ping from R2 to `192.168.50.10`.
+
+### Troubleshooting
+
+Several issues were identified while implementing centralized NTP:
+
+- SW3 initially lacked a management SVI, preventing routed communication with the NTP server. VLAN 99 management addressing was added using `192.168.99.4/24`.
+- SW3's simulated clock was significantly different from the NTP server and required an initial manual clock adjustment before synchronization.
+- R1's PAT configuration still referenced ACL 1, but the ACL itself was no longer present. The NAT ACL was restored and VLAN 50 was added as an eligible inside network.
+- R2 maintained a FULL OSPF adjacency with R1 while failing to install learned IPv4 routes. Resetting the OSPF process forced a route recalculation and restored the expected OSPF routes.
+- VLAN 50 was then explicitly added to R1's OSPF configuration so the branch network could reach the infrastructure server.
+- Packet Tracer retained/reconstructed a previous R2 NTP association with R1 even though the running configuration specified only the new infrastructure server. The intended configuration and Layer 3 connectivity were independently verified and the simulator behavior was documented as a limitation.
+
+### Verification
+
+The completed implementation verified:
+
+- VLAN 50 connectivity and inter-VLAN routing
+- Infrastructure-server external connectivity through PAT
+- NTP synchronization on R1 and enterprise switches
+- Centralized NTP configuration using `192.168.50.10`
+- OSPF advertisement of the new server network
+- Branch-to-server routed connectivity
+- Consistent enterprise time synchronization for future logging and monitoring services
+
+### Lessons Learned
+
+NTP depends on the underlying network infrastructure and can expose problems that initially appear unrelated to time synchronization. During this module, an NTP failure helped uncover missing management addressing, an OSPF route-installation issue, a missing OSPF network advertisement, and an incomplete PAT configuration.
+
+A FULL OSPF adjacency does not by itself guarantee that expected routes have been installed in the routing table. Protocol state, routing tables, interface status, and end-to-end connectivity should all be verified independently during troubleshooting.
+
+Centralized time synchronization establishes an important foundation for the next network-services stages because Syslog and monitoring data are significantly more useful when all infrastructure devices share a consistent time reference.
+
+### Skills Demonstrated
+
+- Network Time Protocol (NTP)
+- Infrastructure server deployment
+- Server VLAN design
+- Router-on-a-stick
+- Inter-VLAN routing
+- OSPF route advertisement and troubleshooting
+- NAT/PAT troubleshooting
+- Switch management SVIs
+- Trunk VLAN management
+- Layer 3 connectivity testing
+- Cisco IOS troubleshooting
+- Network-service verification
+- Technical documentation

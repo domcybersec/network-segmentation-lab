@@ -1,0 +1,534 @@
+MODULE 14 - NTP / NETWORK SERVICES
+===================================
+
+PURPOSE
+-------
+
+The purpose of this module was to introduce centralized network services
+and Network Time Protocol (NTP) into the enterprise lab.
+
+A dedicated infrastructure server and server VLAN were added rather than
+placing infrastructure services inside the management VLAN.
+
+Centralized time synchronization is important because routers, switches,
+servers, monitoring systems, and security systems need consistent
+timestamps for logging, troubleshooting, event correlation, and auditing.
+
+
+NETWORK DESIGN
+--------------
+
+New VLAN:
+
+VLAN 50 - SERVERS
+Network: 192.168.50.0/24
+Default Gateway: 192.168.50.1
+
+Infrastructure Server:
+Hostname: Infra-Server
+IPv4 Address: 192.168.50.10
+Subnet Mask: 255.255.255.0
+Default Gateway: 192.168.50.1
+
+Connection:
+
+Infra-Server
+    |
+SW1 Fa0/3
+    |
+VLAN 50
+    |
+SW1 G0/1 trunk
+    |
+R1 G0/0/0.50
+192.168.50.1
+
+
+WHY USE A SERVER VLAN?
+----------------------
+
+The infrastructure server was placed in VLAN 50 instead of VLAN 99.
+
+VLAN 99 is reserved for network-device management interfaces.
+
+VLAN 50 is used for infrastructure/server services.
+
+This creates a cleaner enterprise design and allows additional services
+such as Syslog and monitoring services to be hosted from the same
+infrastructure network later.
+
+
+SW1 CONFIGURATION
+-----------------
+
+Created the server VLAN:
+
+vlan 50
+ name SERVERS
+
+Configured the Infra-Server access port:
+
+interface fa0/3
+ description INFRA-SERVER
+ switchport mode access
+ switchport access vlan 50
+ no shutdown
+
+The SW1-to-R1 trunk was updated to carry VLAN 50:
+
+interface g0/1
+ switchport trunk allowed vlan 10,20,30,50,99
+
+VLAN 999 was intentionally excluded from this production trunk because
+it is used as a blackhole/parking VLAN for unused interfaces.
+
+
+IMPORTANT TRUNK TROUBLESHOOTING
+-------------------------------
+
+Packet Tracer did not provide the expected "add" option when modifying
+the allowed VLAN list.
+
+Entering:
+
+switchport trunk allowed vlan 50
+
+replaced the existing allowed VLAN list instead of adding VLAN 50.
+
+The trunk was corrected to:
+
+switchport trunk allowed vlan 10,20,30,50,99
+
+Lesson:
+
+Always verify trunk configuration after modifying an allowed VLAN list.
+
+Useful verification command:
+
+show interfaces trunk
+
+
+R1 VLAN 50 CONFIGURATION
+------------------------
+
+A new router-on-a-stick subinterface was created:
+
+interface g0/0/0.50
+ description SERVERS
+ encapsulation dot1Q 50
+ ip address 192.168.50.1 255.255.255.0
+
+This provides the default gateway for VLAN 50 and allows the server
+network to communicate with the rest of the routed network.
+
+
+INFRA-SERVER CONFIGURATION
+--------------------------
+
+IPv4 Address: 192.168.50.10
+Subnet Mask: 255.255.255.0
+Default Gateway: 192.168.50.1
+
+Initial connectivity testing included:
+
+ping 192.168.50.1
+ping 192.168.10.1
+ping 192.168.99.2
+ping 198.51.100.10
+
+Internal routing worked, but external connectivity initially failed.
+
+
+PAT TROUBLESHOOTING
+-------------------
+
+During testing, the Infra-Server could communicate internally but could
+not reach the simulated external network.
+
+R1 still contained the PAT command:
+
+ip nat inside source list 1 interface GigabitEthernet0/0/1 overload
+
+However, ACL 1 was no longer present in the running configuration.
+
+Because PAT referenced ACL 1, the router had no ACL defining which
+internal source networks should be translated.
+
+The exact reason ACL 1 disappeared could not be established.
+
+ACL 1 was restored and VLAN 50 was added:
+
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.20.0 0.0.0.255
+access-list 1 permit 192.168.30.0 0.0.0.255
+access-list 1 permit 192.168.50.0 0.0.0.255
+access-list 1 permit 192.168.99.0 0.0.0.255
+
+The VLAN 50 subinterface was also configured as an inside NAT interface:
+
+interface g0/0/0.50
+ ip nat inside
+
+After restoring the ACL and NAT boundary, the Infra-Server successfully
+reached the simulated external network.
+
+Useful verification commands:
+
+show ip nat statistics
+show ip nat translations
+show access-lists 1
+show run | include ip nat
+
+
+NTP SERVER
+----------
+
+The NTP service on Infra-Server was enabled.
+
+Server address:
+
+192.168.50.10
+
+NTP uses UDP port 123.
+
+Authentication was not enabled for this stage of the lab.
+
+
+NTP CLIENT CONFIGURATION
+------------------------
+
+Enterprise network devices were configured to use the centralized
+Infra-Server as their NTP source:
+
+ntp server 192.168.50.10
+
+This configuration was applied to:
+
+R1
+SW1
+SW2
+SW3
+R2
+
+ISP-R1 was intentionally left outside the internal enterprise NTP
+design.
+
+
+NTP VERIFICATION
+----------------
+
+Useful commands:
+
+show ntp associations
+show ntp status
+show clock
+
+A healthy association appears similar to:
+
+*~192.168.50.10
+
+Symbols:
+
+* = current system peer / selected NTP source
+~ = statically configured NTP server
+
+A synchronized client reports:
+
+Clock is synchronized, stratum 2, reference is 192.168.50.10
+
+The Infra-Server operates as the upstream time source.
+
+The clients report stratum 2 because they receive time from a
+stratum-1 source in the Packet Tracer simulation.
+
+
+NTP REACH VALUE
+---------------
+
+The "reach" field in:
+
+show ntp associations
+
+is an octal reachability register representing the results of the last
+eight NTP polling attempts.
+
+A value of:
+
+377
+
+indicates that the previous eight polls were successful.
+
+A lower nonzero value may simply mean that the client has not completed
+eight successful polls yet.
+
+A value of:
+
+0
+
+indicates that no successful NTP exchanges are currently recorded.
+
+
+SW3 TROUBLESHOOTING
+-------------------
+
+SW3 initially failed to synchronize with the NTP server.
+
+Output showed:
+
+.INIT.
+stratum 16
+reach 0
+
+Investigation with:
+
+show ip interface brief
+
+revealed that SW3 did not have a management IP address.
+
+The missing management SVI was configured:
+
+interface vlan 99
+ description MANAGEMENT
+ ip address 192.168.99.4 255.255.255.0
+ no shutdown
+
+The switch default gateway was also configured:
+
+ip default-gateway 192.168.99.1
+
+After this change, SW3 could communicate with the routed network and
+reach the NTP server.
+
+SW3 then displayed a very large time offset because its local clock was
+still near Packet Tracer's default 1993 date while the NTP server was
+using the current lab date.
+
+The clock was manually moved approximately near the correct date/time,
+after which NTP successfully synchronized.
+
+Troubleshooting interpretation:
+
+.INIT. + reach 0
+= no successful NTP communication
+
+reach > 0 + extremely large offset
+= NTP communication exists, but the local clock is extremely far from
+  the server time
+
+*~192.168.50.10 + synchronized
+= healthy NTP operation
+
+
+R2 ROUTING TROUBLESHOOTING
+--------------------------
+
+R2 initially failed to synchronize directly with Infra-Server.
+
+Testing eventually showed:
+
+show ip route 192.168.50.10
+% Network not in table
+
+R2 could reach R1 at 203.0.113.2 but could not reach HQ networks.
+
+The R1/R2 OSPF adjacency was FULL, and R2's OSPF link-state database
+contained R1's Router LSA and default-route external LSA.
+
+However, no OSPF routes were being installed in R2's IPv4 routing table.
+
+The OSPF process on R2 was reset:
+
+clear ip ospf process
+
+After the adjacency reformed, the original OSPF routes were installed:
+
+192.168.10.0/24
+192.168.20.0/24
+192.168.30.0/24
+192.168.99.0/24
+0.0.0.0/0
+
+This appeared to be a Packet Tracer OSPF state/calculation issue rather
+than an OSPF configuration error.
+
+
+ADVERTISING VLAN 50 WITH OSPF
+-----------------------------
+
+Even after the OSPF state issue was corrected, VLAN 50 was not initially
+available on R2 because it was a newly created network and had not been
+added to R1's OSPF configuration.
+
+R1 was updated:
+
+router ospf 1
+ network 192.168.50.0 0.0.0.255 area 0
+
+R2 then learned:
+
+O 192.168.50.0/24 via 203.0.113.2
+
+Verification:
+
+show ip route 192.168.50.0
+
+R2 successfully pinged the infrastructure server:
+
+ping 192.168.50.10
+
+Success rate: 100 percent
+
+
+R2 NTP / PACKET TRACER LIMITATION
+---------------------------------
+
+R2 previously contained an NTP relationship with R1:
+
+203.0.113.2
+
+The intended design was changed so that R2 would communicate directly
+with the centralized Infra-Server instead:
+
+ntp server 192.168.50.10
+
+The old R1 NTP configuration was removed.
+
+However, Packet Tracer continued to display/reconstruct the previous
+203.0.113.2 association even when the running configuration contained
+only:
+
+ntp server 192.168.50.10
+
+At different stages, Packet Tracer displayed stale or malformed NTP
+association information.
+
+The running configuration was therefore treated as the authoritative
+configuration.
+
+Final intended R2 configuration:
+
+ntp server 192.168.50.10
+
+R2 routing to the server was independently verified:
+
+R2 -> 192.168.50.10
+Success rate: 100 percent
+
+Direct synchronization to Infra-Server was successfully demonstrated
+on the other enterprise devices, while R2 retained a Packet Tracer
+simulation artifact involving its previous NTP association.
+
+This limitation was documented rather than modifying otherwise correct
+routing or NTP configuration solely to work around simulator behavior.
+
+
+WHY NTP MATTERS
+---------------
+
+Accurate synchronized time is important for:
+
+- Syslog timestamps
+- Security-event correlation
+- Troubleshooting
+- Authentication systems
+- Monitoring systems
+- Auditing
+- Incident response
+- Comparing events across multiple network devices
+
+For example, if a router reports an event at 14:03 while a switch's
+clock incorrectly reports 13:47, reconstructing the sequence of events
+becomes significantly more difficult.
+
+Centralized NTP gives devices a common time reference.
+
+
+KEY TROUBLESHOOTING COMMANDS
+----------------------------
+
+NTP:
+
+show clock
+show ntp associations
+show ntp status
+show run | include ntp
+
+Routing:
+
+show ip route
+show ip route 192.168.50.0
+show ip ospf neighbor
+show ip ospf database
+
+Interfaces:
+
+show ip interface brief
+show interfaces trunk
+
+NAT:
+
+show ip nat statistics
+show ip nat translations
+show access-lists 1
+
+Connectivity:
+
+ping 192.168.50.10
+
+
+LESSONS LEARNED
+---------------
+
+1. NTP depends on working Layer 3 connectivity. A time-sync failure may
+   actually be a routing problem.
+
+2. A FULL OSPF neighbor relationship does not by itself prove that the
+   expected routes are present in the routing table.
+
+3. The OSPF link-state database and the IP routing table represent
+   different stages of the routing process.
+
+4. Newly created routed networks must be included in the appropriate
+   dynamic routing configuration if remote networks need to reach them.
+
+5. A switch requires a management SVI and appropriate default gateway
+   to communicate with devices outside its local subnet.
+
+6. Centralized infrastructure services should be separated logically
+   from network-device management when practical.
+
+7. Modifying a trunk allowed-VLAN command can replace the existing VLAN
+   list if the command syntax is not handled carefully.
+
+8. PAT requires both the translation rule and the ACL that identifies
+   eligible inside source networks.
+
+9. Simulator output can occasionally contain stale or inconsistent
+   protocol state. Configuration, routing, connectivity, and multiple
+   verification commands should be compared before changing a working
+   design.
+
+10. Troubleshooting should proceed layer by layer rather than assuming
+    the protocol producing the visible error is the root cause.
+
+
+SKILLS DEMONSTRATED
+-------------------
+
+- Network Time Protocol (NTP)
+- Centralized infrastructure services
+- Server VLAN design
+- VLAN creation and access-port configuration
+- 802.1Q trunk modification
+- Router-on-a-stick
+- Inter-VLAN routing
+- OSPF route advertisement
+- OSPF troubleshooting
+- Routing-table analysis
+- NAT/PAT troubleshooting
+- Switch management SVIs
+- Default-gateway configuration
+- Connectivity testing
+- Cisco IOS verification commands
+- Packet Tracer troubleshooting
+- Technical documentation
