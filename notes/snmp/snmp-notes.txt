@@ -1,0 +1,1014 @@
+SNMP / NETWORK MONITORING NOTES
+===============================
+
+PURPOSE
+-------
+
+Simple Network Management Protocol (SNMP) allows a Network Management
+System (NMS) to retrieve operational information from network devices.
+
+Instead of an administrator manually logging into every router or switch
+and running show commands, an NMS can query SNMP-enabled devices and
+collect information automatically.
+
+Common SNMP monitoring uses include:
+
+- Device availability
+- Device uptime
+- Interface status
+- Interface traffic counters
+- Interface errors
+- Device identity
+- CPU utilization
+- Memory utilization
+- Network inventory
+- Performance monitoring
+- Alerting and troubleshooting
+
+SNMP is widely used by network monitoring platforms to monitor large
+numbers of infrastructure devices.
+
+
+SNMP ARCHITECTURE
+-----------------
+
+The basic SNMP architecture contains two primary components:
+
+1. SNMP Manager / Network Management System (NMS)
+
+   The monitoring system that requests information.
+
+2. SNMP Agent
+
+   Software running on the monitored router, switch, server, or other
+   network device.
+
+In this lab:
+
+Infra-Server
+192.168.50.10
+MIB Browser
+      |
+      | SNMP Query
+      | UDP 161
+      v
+Cisco Router/Switch
+SNMP Agent
+
+
+SNMP VS SYSLOG
+--------------
+
+SNMP and Syslog both provide network visibility, but they operate
+differently.
+
+SNMP monitoring is primarily polling-based.
+
+The NMS asks:
+
+"What is your uptime?"
+"What interfaces do you have?"
+"Is interface 3 up?"
+"How many bytes have crossed this interface?"
+
+The SNMP agent responds with the requested information.
+
+Syslog is primarily event-driven.
+
+The network device generates an event and sends the resulting message
+to the Syslog server.
+
+Example:
+
+SNMP:
+
+NMS ---> Device
+    query
+
+NMS <--- Device
+    response
+
+Syslog:
+
+Device ---> Syslog Server
+       event/message
+
+SNMP can also generate unsolicited notifications called traps or informs,
+although Packet Tracer's simplified IOS implementation did not expose
+the necessary trap configuration commands in this lab.
+
+
+SNMP PORTS
+----------
+
+SNMP polling normally uses:
+
+UDP 161
+
+The SNMP manager sends requests to UDP port 161 on the SNMP agent.
+
+SNMP traps normally use:
+
+UDP 162
+
+UDP 162 was not implemented as part of this Packet Tracer lab.
+
+
+SNMP VERSION USED
+-----------------
+
+The lab uses Packet Tracer's community-string-based SNMP implementation.
+
+A read-only community string was configured:
+
+DOM-NMS-RO
+
+Configuration:
+
+snmp-server community DOM-NMS-RO ro
+
+The "ro" option means:
+
+Read Only
+
+The SNMP manager can retrieve supported information but is not granted
+read-write access through the community.
+
+
+READ-ONLY VS READ-WRITE
+-----------------------
+
+Packet Tracer provided two community permissions:
+
+ro = Read-only
+rw = Read-write
+
+Read-only access was selected because this lab is intended for network
+monitoring.
+
+Read-write SNMP could potentially allow an NMS to modify device
+configuration or operational values and was unnecessary for the
+monitoring objective.
+
+Monitoring systems should follow the principle of least privilege and
+receive only the access they require.
+
+
+COMMUNITY STRINGS
+-----------------
+
+SNMPv1 and SNMPv2c use community strings as a simple authentication
+mechanism.
+
+Conceptually, the community string acts similarly to a shared password
+between the NMS and SNMP agent.
+
+Lab community:
+
+DOM-NMS-RO
+
+Default community strings such as:
+
+public
+private
+
+were intentionally avoided.
+
+Community strings in older SNMP versions do not provide the strong
+authentication and encryption capabilities available with SNMPv3.
+
+In production environments, SNMPv3 is generally preferable when supported.
+
+
+PACKET TRACER SNMP IOS LIMITATION
+---------------------------------
+
+The Packet Tracer router provided only:
+
+snmp-server community
+
+under the SNMP configuration options.
+
+It did not expose the broader SNMP configuration capabilities available
+on full Cisco IOS platforms.
+
+For example, the lab could not configure an ACL directly through the
+available SNMP community command to restrict queries specifically to the
+Infra-Server.
+
+The lab therefore uses Packet Tracer's simplified SNMP implementation.
+
+In a production environment, SNMP access should be restricted to
+authorized management systems whenever possible.
+
+
+SNMP AGENT CONFIGURATION
+------------------------
+
+The following configuration was applied to the infrastructure devices:
+
+snmp-server community DOM-NMS-RO ro
+
+SNMP was configured on:
+
+R1
+R2
+SW1
+SW2
+SW3
+SW4
+
+This enabled read-only SNMP monitoring on all six network infrastructure
+devices.
+
+
+NETWORK MANAGEMENT SYSTEM
+-------------------------
+
+The Packet Tracer Infra-Server did not provide SNMP under:
+
+Services
+
+However, the server's Desktop applications included:
+
+MIB Browser
+
+The MIB Browser was used as the lab's Network Management System / SNMP
+manager.
+
+MIB Browser configuration:
+
+Address:
+Target device management IP
+
+Port:
+161
+
+Read Community:
+DOM-NMS-RO
+
+Write Community:
+Blank
+
+Operation:
+Get
+
+
+MANAGEMENT ADDRESSES
+--------------------
+
+The following addresses can be used by the Infra-Server to query the
+network devices:
+
+R1:
+192.168.50.1
+
+R2:
+203.0.113.3
+
+SW1:
+192.168.99.2
+
+SW2:
+192.168.99.3
+
+SW3:
+192.168.99.4
+
+SW4:
+192.168.40.2
+
+
+MIB
+---
+
+MIB stands for:
+
+Management Information Base
+
+A MIB provides an organized hierarchy of information that can be
+retrieved from an SNMP-enabled device.
+
+Examples of information represented through MIB objects include:
+
+- System name
+- System uptime
+- Interface descriptions
+- Interface status
+- Interface counters
+- Device information
+
+The MIB provides human-readable object names while SNMP identifies
+individual objects using numeric Object Identifiers.
+
+
+OID
+---
+
+OID stands for:
+
+Object Identifier
+
+An OID identifies a particular piece of information within the MIB
+hierarchy.
+
+Example:
+
+sysName
+
+OID:
+
+.1.3.6.1.2.1.1.5.0
+
+The hierarchy can be interpreted approximately as:
+
+1        iso
+3        org
+6        dod
+1        internet
+2        mgmt
+1        mib-2
+1        system
+5        sysName
+0        scalar instance
+
+The MIB Browser allows administrators to navigate using readable object
+names instead of memorizing long numeric OIDs.
+
+
+SNMP GET
+--------
+
+An SNMP GET operation requests the value of a specific OID from an
+SNMP agent.
+
+Example:
+
+Infra-Server
+      |
+      | SNMP GET
+      | sysName
+      | .1.3.6.1.2.1.1.5.0
+      v
+     R1
+      |
+      | Response
+      v
+     "R1"
+
+The successful response proves that:
+
+- IP connectivity exists
+- UDP 161 communication works
+- The SNMP agent is enabled
+- The community string is correct
+- The requested MIB object is supported
+
+
+SYSNAME QUERY
+-------------
+
+The first SNMP query performed against R1 requested:
+
+sysName
+
+OID:
+
+.1.3.6.1.2.1.1.5.0
+
+The MIB Browser returned:
+
+R1
+
+Data Type:
+
+OctetString
+
+An OctetString represents a sequence of bytes commonly used to represent
+text values.
+
+This successfully demonstrated basic SNMP polling.
+
+
+SYSUPTIME QUERY
+---------------
+
+The next query requested:
+
+sysUpTime
+
+OID:
+
+.1.3.6.1.2.1.1.3.0
+
+The MIB Browser returned approximately:
+
+20 hours 11 minutes 51 seconds
+
+Data Type:
+
+TimeTicks
+
+sysUpTime represents how long the SNMP agent/device has been operating.
+
+Monitoring uptime can help identify unexpected device restarts.
+
+For example, if an NMS previously observed months of uptime and suddenly
+sees several minutes of uptime, the device may have rebooted.
+
+
+INTERFACE MONITORING
+--------------------
+
+The MIB Browser was also used to inspect R1's interface table.
+
+Relevant MIB hierarchy:
+
+interfaces
+ |
+ +-- ifTable
+      |
+      +-- ifEntry
+           |
+           +-- ifIndex
+           +-- ifDescr
+           +-- ifAdminStatus
+           +-- ifOperStatus
+           +-- additional interface data
+
+
+IFINDEX
+-------
+
+Each interface is assigned an SNMP interface index.
+
+The index allows related MIB objects to refer to the same interface.
+
+Example:
+
+ifDescr.3
+ifAdminStatus.3
+ifOperStatus.3
+
+All three values refer to interface index 3.
+
+
+IFDESCR
+-------
+
+ifDescr provides the interface description/name.
+
+The R1 query returned interfaces including:
+
+Index 1:
+GigabitEthernet0/0/0
+
+Index 2:
+GigabitEthernet0/0/1
+
+Index 3:
+GigabitEthernet0/0/2
+
+Index 4:
+GigabitEthernet0/0/0.10
+
+Index 5:
+GigabitEthernet0/0/0.20
+
+Index 6:
+GigabitEthernet0/0/0.30
+
+Additional subinterfaces were also represented in the interface table.
+
+
+IFADMINSTATUS
+-------------
+
+ifAdminStatus represents the administratively configured state of an
+interface.
+
+Conceptually:
+
+up
+=
+Administrator intends the interface to be enabled.
+
+down
+=
+Interface has been administratively disabled.
+
+
+IFOPERSTATUS
+------------
+
+ifOperStatus represents the actual operational state of an interface.
+
+Conceptually:
+
+up
+=
+Interface is operational.
+
+down
+=
+Interface is not operational.
+
+
+ADMINISTRATIVE VS OPERATIONAL STATUS
+------------------------------------
+
+Comparing ifAdminStatus and ifOperStatus can help determine why an
+interface is unavailable.
+
+Example 1:
+
+Admin Status: up
+Operational Status: up
+
+Meaning:
+
+The interface is enabled and functioning.
+
+
+Example 2:
+
+Admin Status: up
+Operational Status: down
+
+Meaning:
+
+The interface is enabled but the link is not operational.
+
+Possible causes could include:
+
+- Disconnected cable
+- Failed neighboring device
+- Physical link problem
+- Layer 1 issue
+
+
+Example 3:
+
+Admin Status: down
+Operational Status: down
+
+Meaning:
+
+The interface was administratively disabled.
+
+
+R1 INTERFACE EXAMPLE
+--------------------
+
+SNMP identified:
+
+Index 3:
+GigabitEthernet0/0/2
+
+The queries returned:
+
+ifAdminStatus.3 = down
+ifOperStatus.3  = down
+
+Therefore, the NMS can determine that the interface is administratively
+disabled rather than simply experiencing an unexpected link failure.
+
+This demonstrates how monitoring systems can identify interface state
+without an administrator manually connecting to the router and running:
+
+show ip interface brief
+
+
+SW1 VERIFICATION
+----------------
+
+After SNMP was deployed across the infrastructure, the Infra-Server
+queried SW1 using:
+
+Target:
+
+192.168.99.2
+
+OID:
+
+.1.3.6.1.2.1.1.5.0
+
+Object:
+
+sysName
+
+The SNMP query successfully returned:
+
+SW1
+
+This verified SNMP monitoring of an HQ access/distribution switch.
+
+
+SW4 / BRANCH VERIFICATION
+-------------------------
+
+The Infra-Server then attempted to query:
+
+SW4
+192.168.40.2
+
+The initial SNMP query failed.
+
+Verification showed that SW4 was correctly configured:
+
+snmp-server community DOM-NMS-RO RO
+
+However, the Infra-Server could not ping:
+
+192.168.40.2
+
+The Infra-Server also could not ping:
+
+192.168.40.10
+
+Therefore, the failure was not caused by SNMP and was not specific to
+SW4.
+
+The problem affected HQ-initiated communication toward the entire Branch
+network.
+
+
+HQ-TO-BRANCH NAT TROUBLESHOOTING
+--------------------------------
+
+R1's NAT translation table was cleared.
+
+The Infra-Server then attempted to ping the Branch-PC.
+
+R1's NAT table showed:
+
+Inside local:
+192.168.50.10
+
+Inside global:
+203.0.113.2
+
+Outside:
+192.168.40.10
+
+This proved that R1 was incorrectly applying PAT to HQ-to-Branch traffic.
+
+R1 was originally configured with a standard NAT ACL that matched the HQ
+source networks without considering the destination.
+
+That design was sufficient when traffic primarily flowed from the HQ
+networks toward the simulated Internet.
+
+After a second routed site was introduced, the NAT policy needed to
+distinguish between:
+
+Internal routed traffic
+
+and:
+
+Internet-bound traffic
+
+
+NTP NAT DISCOVERY
+-----------------
+
+R1's NAT translation table also showed:
+
+UDP
+Inside local:
+192.168.50.10:123
+
+Inside global:
+203.0.113.2:123
+
+Outside:
+192.168.40.2:123
+
+UDP port 123 is NTP.
+
+This demonstrated that R1 was translating NTP traffic between the
+Infra-Server and SW4.
+
+This provided a real network configuration explanation for part of the
+earlier SW4 NTP synchronization problem.
+
+
+HQ NAT EXEMPTION
+----------------
+
+R1's original standard NAT ACL was replaced with an extended
+destination-aware NAT policy.
+
+Configuration:
+
+ip access-list extended HQ-NAT
+ deny ip 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.30.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.50.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.99.0 0.0.0.255 192.168.40.0 0.0.0.255
+ permit ip 192.168.10.0 0.0.0.255 any
+ permit ip 192.168.20.0 0.0.0.255 any
+ permit ip 192.168.30.0 0.0.0.255 any
+ permit ip 192.168.50.0 0.0.0.255 any
+ permit ip 192.168.99.0 0.0.0.255 any
+
+PAT was then configured using:
+
+ip nat inside source list HQ-NAT interface GigabitEthernet0/0/1 overload
+
+The deny statements mean:
+
+Do not NAT HQ traffic when the destination is the Branch network.
+
+The permit statements mean:
+
+NAT other matching HQ traffic, including simulated Internet-bound
+traffic.
+
+
+FINAL BIDIRECTIONAL NAT POLICY
+------------------------------
+
+R1:
+
+HQ -> Branch
+No NAT
+
+HQ -> Internet
+PAT
+
+
+R2:
+
+Branch -> HQ
+No NAT
+
+Branch -> Internet
+PAT
+
+
+Final behavior:
+
+HQ <--------------------> Branch
+       OSPF Routing
+        No NAT
+
+
+HQ ----------------------> Internet
+             PAT
+
+
+Branch ------------------> Internet
+             PAT
+
+
+POST-FIX VERIFICATION
+---------------------
+
+After correcting R1's NAT policy:
+
+Infra-Server -> Branch-PC
+SUCCESS
+
+Infra-Server -> SW4
+SUCCESS
+
+Infra-Server -> External Server
+SUCCESS
+
+This proved that:
+
+- HQ-to-Branch routing works without NAT
+- HQ-to-Internet PAT still works
+- Branch management services are reachable from HQ
+
+
+SW4 SNMP VERIFICATION
+---------------------
+
+After correcting the NAT policy, the Infra-Server could successfully
+communicate with SW4 at:
+
+192.168.40.2
+
+The SNMP MIB Browser could therefore poll the Branch switch across the
+routed network using the same read-only community configuration.
+
+This demonstrates centralized monitoring across both the HQ and Branch
+sites.
+
+
+SW4 NTP CORRECTION
+------------------
+
+After correcting R1's NAT policy, SW4's NTP status was checked again.
+
+SW4 reported:
+
+192.168.50.10 as the selected NTP peer.
+
+show ntp status reported:
+
+Clock is synchronized, stratum 2, reference is 192.168.50.10
+
+This confirmed that SW4 successfully synchronized directly with the
+centralized Infra-Server after the incorrect HQ-to-Branch NAT behavior
+was removed.
+
+Packet Tracer continued to display an additional association with:
+
+203.0.113.2
+
+However, 192.168.50.10 was correctly selected as the active system peer.
+
+Therefore, the final operational NTP result for SW4 is:
+
+SYNCHRONIZED
+
+
+WHY THIS MATTERS FOR A NOC
+--------------------------
+
+A NOC monitoring hundreds or thousands of interfaces cannot manually SSH
+into every device continuously.
+
+SNMP allows monitoring software to automatically retrieve information
+such as:
+
+- Device availability
+- Device uptime
+- Interface identity
+- Administrative status
+- Operational status
+- Interface counters
+- Errors and utilization
+
+Monitoring software can then visualize this information and alert
+analysts when values change or cross configured thresholds.
+
+For example:
+
+ifAdminStatus = up
+ifOperStatus changes from up to down
+
+could trigger an alert indicating that an interface expected to be
+operational has lost connectivity.
+
+
+KEY COMMANDS
+------------
+
+Configure read-only SNMP:
+
+snmp-server community DOM-NMS-RO ro
+
+Verify SNMP configuration:
+
+show running-config | include snmp
+
+Verify routing:
+
+show ip route
+
+Verify reachability:
+
+ping <destination>
+
+Inspect NAT:
+
+show ip nat translations
+show ip nat statistics
+
+Clear dynamic NAT translations:
+
+clear ip nat translation *
+
+Inspect NAT ACLs:
+
+show access-lists
+
+
+IMPORTANT OIDS USED
+-------------------
+
+sysName:
+
+.1.3.6.1.2.1.1.5.0
+
+Purpose:
+Returns the device's system name.
+
+
+sysUpTime:
+
+.1.3.6.1.2.1.1.3.0
+
+Purpose:
+Returns device/SNMP-agent uptime.
+
+
+Interface MIB objects:
+
+ifDescr
+
+Purpose:
+Identifies interfaces.
+
+
+ifAdminStatus
+
+Purpose:
+Reports administratively configured interface state.
+
+
+ifOperStatus
+
+Purpose:
+Reports actual operational interface state.
+
+
+KEY LESSONS
+-----------
+
+1. SNMP allows centralized systems to monitor network devices without
+   administrators manually logging into each device.
+
+2. SNMP agents run on monitored devices while an SNMP manager/NMS
+   performs queries.
+
+3. SNMP polling normally uses UDP port 161.
+
+4. SNMP traps normally use UDP port 162.
+
+5. MIBs organize the information exposed through SNMP.
+
+6. OIDs uniquely identify individual pieces of management information.
+
+7. A MIB Browser provides a human-readable way to navigate and query
+   OIDs.
+
+8. sysName can remotely identify a device.
+
+9. sysUpTime can reveal device uptime and unexpected restarts.
+
+10. ifDescr maps SNMP interface indexes to recognizable interfaces.
+
+11. Comparing ifAdminStatus and ifOperStatus can distinguish an
+    administratively disabled interface from an unexpected link failure.
+
+12. Read-only SNMP is preferable to read-write access when monitoring is
+    the only requirement.
+
+13. Older community-string-based SNMP provides weaker security than
+    SNMPv3.
+
+14. Monitoring traffic depends on normal network reachability. A failed
+    SNMP query does not automatically indicate an SNMP problem.
+
+15. NAT policies designed for a single-site Internet edge may require
+    changes after additional routed sites are introduced.
+
+16. Internal site-to-site traffic should not normally be PATed when the
+    networks have proper routing between them.
+
+17. NAT translation tables can reveal unexpected translation behavior
+    affecting application protocols such as ICMP, SNMP, and NTP.
+
+18. Troubleshooting should verify network connectivity before changing
+    application-layer configurations.
+
+19. SNMP and Syslog complement each other:
+    SNMP provides ongoing state/metric monitoring while Syslog provides
+    event-driven messages.
+
+20. NTP complements both services by providing consistent timestamps
+    for monitoring and event correlation.
+
+
+SKILLS DEMONSTRATED
+-------------------
+
+- SNMP configuration
+- SNMP polling
+- SNMP manager/agent architecture
+- MIB navigation
+- OID interpretation
+- SNMP GET operations
+- sysName monitoring
+- sysUpTime monitoring
+- Interface monitoring
+- ifIndex correlation
+- ifDescr interpretation
+- ifAdminStatus interpretation
+- ifOperStatus interpretation
+- Read-only SNMP security
+- UDP 161 monitoring
+- Network Management System concepts
+- Centralized infrastructure monitoring
+- Multi-site monitoring
+- OSPF route verification
+- NAT/PAT troubleshooting
+- Bidirectional NAT exemption
+- NTP troubleshooting
+- Structured network troubleshooting

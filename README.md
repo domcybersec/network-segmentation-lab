@@ -1707,3 +1707,714 @@ The final network successfully demonstrated:
 - Extended ACL configuration
 - Infrastructure service integration
 - Structured network troubleshooting
+## Module 14 - Network Services & Monitoring
+
+### Overview
+
+This module introduces centralized infrastructure services used to manage, monitor, and troubleshoot network devices across the headquarters and branch networks.
+
+A dedicated infrastructure server was added to VLAN 50 to provide centralized network services.
+
+| Device | VLAN | IPv4 Address | Default Gateway |
+| --- | --- | --- | --- |
+| Infra-Server | 50 - SERVERS | 192.168.50.10/24 | 192.168.50.1 |
+
+The module implements:
+
+- Network Time Protocol (NTP)
+- Centralized Syslog
+- Simple Network Management Protocol (SNMP)
+- Branch switch management
+- Multi-site monitoring
+- NAT exemption for routed HQ-to-Branch communication
+
+The module also demonstrates how centralized services depend on correct routing and NAT policy across a multi-site network.
+
+---
+
+### NTP
+
+#### Overview
+
+Network Time Protocol (NTP) was implemented to provide a centralized time source for network infrastructure.
+
+Accurate and consistent device clocks improve troubleshooting, monitoring, log correlation, and security investigations by allowing events from multiple devices to be placed on a common timeline.
+
+The Infra-Server at `192.168.50.10` acts as the centralized NTP server.
+
+#### Implemented
+
+The infrastructure devices were configured with:
+
+```text
+ntp server 192.168.50.10
+```
+
+NTP was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+During implementation, SW3 was found to be missing a management SVI.
+
+A management address was added in VLAN 99:
+
+```text
+interface vlan 99
+ description MANAGEMENT
+ ip address 192.168.99.4 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.99.1
+```
+
+VLAN 50 was also added to R1's OSPF configuration so the Branch network could learn a route to the infrastructure server:
+
+```text
+router ospf 1
+ network 192.168.50.0 0.0.0.255 area 0
+```
+
+R2 subsequently learned `192.168.50.0/24` through OSPF.
+
+#### Verification
+
+NTP was examined using:
+
+```text
+show ntp associations
+show ntp status
+show clock
+```
+
+Centralized NTP operation was successfully demonstrated across the network.
+
+SW4 initially experienced synchronization problems. Later troubleshooting revealed that R1 was incorrectly applying PAT to NTP traffic traveling from the Infra-Server toward the Branch network.
+
+After correcting the HQ NAT policy, SW4 reported:
+
+```text
+Clock is synchronized, stratum 2, reference is 192.168.50.10
+```
+
+and `192.168.50.10` appeared as the selected NTP peer.
+
+This confirmed successful centralized NTP operation across the routed HQ and Branch networks.
+
+Packet Tracer continued to display an additional stale association with `203.0.113.2` on SW4, but the correct Infra-Server was selected as the active NTP reference.
+
+---
+
+### Centralized Syslog
+
+#### Overview
+
+Centralized Syslog was implemented to provide a single location for operational and infrastructure events generated throughout the network.
+
+Instead of relying only on individual device consoles or local log buffers, routers and switches forward messages to the Infra-Server at `192.168.50.10`.
+
+Syslog provides centralized visibility for:
+
+- Interface state changes
+- Configuration changes
+- Operational events
+- Troubleshooting
+- Security monitoring
+- Incident investigation
+
+Packet Tracer uses UDP port 514 for Syslog.
+
+#### Implemented
+
+Remote logging was configured using:
+
+```text
+logging 192.168.50.10
+```
+
+Centralized logging was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+The Syslog server successfully received messages from all six devices.
+
+| Device | Observed Syslog Source |
+| --- | --- |
+| R1 | 192.168.50.1 |
+| R2 | 203.0.113.3 |
+| SW1 | 192.168.99.2 |
+| SW2 | 192.168.99.3 |
+| SW3 | 192.168.99.4 |
+| SW4 | 192.168.40.2 |
+
+`show logging` confirmed that devices were forwarding messages to the centralized server using UDP port 514.
+
+Example:
+
+```text
+Trap logging: level informational
+Logging to 192.168.50.10 (udp port 514)
+```
+
+#### Syslog Event Verification
+
+A controlled interface-state change was generated on SW1 to verify end-to-end logging.
+
+SW1 Fa0/4 was temporarily configured as an active access port and connected to the lab's disconnected test laptop.
+
+The resulting interface event generated a Syslog message similar to:
+
+```text
+%LINK-5-CHANGED: Interface FastEthernet0/4, changed state to up
+```
+
+The event appeared on the Infra-Server's centralized Syslog table.
+
+The test demonstrated:
+
+```text
+Physical Interface Event
+          |
+          v
+    SW1 Detects Change
+          |
+          v
+   IOS Generates Syslog
+          |
+          v
+       UDP 514
+          |
+          v
+     Infra-Server
+    192.168.50.10
+```
+
+After testing, Fa0/4 was returned to its hardened unused-port configuration:
+
+```text
+interface fa0/4
+ description UNUSED
+ switchport mode access
+ switchport access vlan 999
+ shutdown
+```
+
+---
+
+### Branch Switch Management
+
+SW4 originally operated only as an unmanaged Layer 2 access switch.
+
+To integrate SW4 with centralized infrastructure services, a management SVI was added using the local Branch network.
+
+A dedicated Branch VLAN was created:
+
+```text
+vlan 40
+ name Branch
+```
+
+The R2 and Branch-PC interfaces were assigned to VLAN 40:
+
+```text
+interface fa0/1
+ description R2-BRANCH-GATEWAY
+ switchport mode access
+ switchport access vlan 40
+
+interface fa0/2
+ description BRANCH-PC
+ switchport mode access
+ switchport access vlan 40
+```
+
+SW4 received the management address `192.168.40.2/24`:
+
+```text
+interface vlan 40
+ description BRANCH-MANAGEMENT
+ ip address 192.168.40.2 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.40.1
+```
+
+Verification showed:
+
+```text
+Vlan40    192.168.40.2    up    up
+```
+
+This allows SW4 to communicate with centralized infrastructure services through the routed Branch network without extending the headquarters VLAN 99 management network across the WAN.
+
+---
+
+### Branch-to-HQ NAT Exemption
+
+While integrating SW4 with centralized services, SW4 could successfully reach its local gateway and R2's WAN interface but initially could not reach the Infra-Server.
+
+The Branch-PC experienced the same failure.
+
+Testing showed:
+
+```text
+SW4 -> 192.168.40.1    Success
+SW4 -> 203.0.113.3     Success
+SW4 -> 192.168.50.10   Failed
+
+Branch-PC -> 192.168.50.10   Failed
+```
+
+OSPF routing was verified in both directions.
+
+R2 correctly knew:
+
+```text
+192.168.50.0/24 via 203.0.113.2
+```
+
+R1 correctly knew:
+
+```text
+192.168.40.0/24 via 203.0.113.3
+```
+
+Inspection of R2's NAT translation table revealed that Branch-to-HQ traffic was being unnecessarily translated.
+
+R2's original NAT policy matched all traffic sourced from `192.168.40.0/24` regardless of destination.
+
+The standard NAT ACL was replaced with a destination-aware extended ACL:
+
+```text
+ip access-list extended BRANCH-NAT
+ deny ip 192.168.40.0 0.0.0.255 192.168.10.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.20.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.30.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.50.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.99.0 0.0.0.255
+ permit ip 192.168.40.0 0.0.0.255 any
+```
+
+PAT was then configured using:
+
+```text
+ip nat inside source list BRANCH-NAT interface GigabitEthernet0/0/0 overload
+```
+
+The ACL `deny` entries exempt internal HQ destinations from NAT. They do not block the underlying routed traffic.
+
+After the change:
+
+```text
+Branch-PC -> 192.168.50.10   Success
+Branch-PC -> 198.51.100.10   Success
+SW4       -> 192.168.50.10   Success
+```
+
+This confirmed that Branch-to-HQ traffic remains normally routed while Internet-bound Branch traffic continues to use PAT.
+
+---
+
+### SNMP
+
+#### Overview
+
+Simple Network Management Protocol (SNMP) was implemented to demonstrate centralized infrastructure monitoring.
+
+SNMP allows a Network Management System (NMS) to retrieve operational information from routers and switches without administrators manually logging into each device.
+
+Typical SNMP monitoring can include:
+
+- Device identity
+- Device uptime
+- Interface inventory
+- Administrative interface state
+- Operational interface state
+- Interface counters
+- Device availability
+- Performance metrics
+
+The Infra-Server's MIB Browser was used as the lab's SNMP manager.
+
+Network devices operate as SNMP agents.
+
+The monitoring architecture is:
+
+```text
+Infra-Server / NMS
+192.168.50.10
+        |
+        | SNMP GET
+        | UDP 161
+        v
+Routers and Switches
+     SNMP Agents
+```
+
+#### Implemented
+
+A read-only SNMP community was configured on all six infrastructure devices:
+
+```text
+snmp-server community DOM-NMS-RO ro
+```
+
+SNMP was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+Read-only access was selected because the objective is monitoring rather than remote modification.
+
+The Packet Tracer implementation exposed only simplified community-string-based SNMP configuration. Production environments should restrict SNMP access to authorized management systems and generally prefer SNMPv3 when supported.
+
+---
+
+### MIB and OID Queries
+
+The Packet Tracer MIB Browser was used to perform SNMP GET operations.
+
+A Management Information Base (MIB) organizes information exposed by an SNMP-enabled device.
+
+An Object Identifier (OID) identifies a specific value within that hierarchy.
+
+The first R1 query requested:
+
+```text
+sysName
+```
+
+OID:
+
+```text
+.1.3.6.1.2.1.1.5.0
+```
+
+The query returned:
+
+```text
+R1
+```
+
+This demonstrated successful SNMP communication between the Infra-Server and R1.
+
+The NMS then queried:
+
+```text
+sysUpTime
+```
+
+OID:
+
+```text
+.1.3.6.1.2.1.1.3.0
+```
+
+The response reported approximately:
+
+```text
+20 hours 11 minutes 51 seconds
+```
+
+This demonstrated how an NMS can remotely determine device uptime and potentially identify unexpected device restarts.
+
+---
+
+### SNMP Interface Monitoring
+
+R1's interface MIB was queried to examine interface information.
+
+Relevant objects included:
+
+```text
+ifDescr
+ifAdminStatus
+ifOperStatus
+```
+
+`ifDescr` mapped SNMP interface indexes to recognizable IOS interfaces.
+
+Example results included:
+
+| Index | Interface |
+| ---: | --- |
+| 1 | GigabitEthernet0/0/0 |
+| 2 | GigabitEthernet0/0/1 |
+| 3 | GigabitEthernet0/0/2 |
+| 4 | GigabitEthernet0/0/0.10 |
+| 5 | GigabitEthernet0/0/0.20 |
+| 6 | GigabitEthernet0/0/0.30 |
+
+`ifAdminStatus` represents the administratively configured interface state.
+
+`ifOperStatus` represents the actual operational interface state.
+
+For R1 interface index 3:
+
+```text
+Interface:     GigabitEthernet0/0/2
+Admin Status:  down
+Oper Status:   down
+```
+
+This allows an NMS to distinguish an administratively disabled interface from an enabled interface that unexpectedly lost connectivity.
+
+For example:
+
+```text
+Admin: up
+Oper:  up
+```
+
+indicates an enabled and functioning interface.
+
+```text
+Admin: up
+Oper:  down
+```
+
+can indicate an unexpected link failure.
+
+```text
+Admin: down
+Oper:  down
+```
+
+indicates an administratively disabled interface.
+
+This demonstrates how a monitoring platform can determine interface state without an administrator manually running:
+
+```text
+show ip interface brief
+```
+
+---
+
+### SNMP Multi-Site Verification
+
+SNMP polling was verified against SW1 using:
+
+```text
+Target: 192.168.99.2
+Object: sysName
+OID:    .1.3.6.1.2.1.1.5.0
+```
+
+The query successfully returned:
+
+```text
+SW1
+```
+
+The Infra-Server then attempted the same query against SW4:
+
+```text
+192.168.40.2
+```
+
+The initial query failed.
+
+Testing showed that the Infra-Server could not ping either SW4 or the Branch-PC, proving that the problem was network reachability rather than SNMP configuration.
+
+---
+
+### HQ-to-Branch NAT Exemption
+
+R1's NAT translation table was inspected while the Infra-Server attempted to communicate with the Branch.
+
+The table showed that traffic from:
+
+```text
+192.168.50.10
+```
+
+was being translated to:
+
+```text
+203.0.113.2
+```
+
+even when its destination was the internal Branch network.
+
+The NAT table also showed UDP port 123 traffic from the Infra-Server toward SW4 being translated, revealing that the same NAT policy was interfering with NTP communication.
+
+R1's original standard NAT ACL was therefore replaced with a destination-aware extended ACL:
+
+```text
+ip access-list extended HQ-NAT
+ deny ip 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.30.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.50.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.99.0 0.0.0.255 192.168.40.0 0.0.0.255
+ permit ip 192.168.10.0 0.0.0.255 any
+ permit ip 192.168.20.0 0.0.0.255 any
+ permit ip 192.168.30.0 0.0.0.255 any
+ permit ip 192.168.50.0 0.0.0.255 any
+ permit ip 192.168.99.0 0.0.0.255 any
+```
+
+PAT was then configured using:
+
+```text
+ip nat inside source list HQ-NAT interface GigabitEthernet0/0/1 overload
+```
+
+The final NAT design is:
+
+| Traffic | Behavior |
+| --- | --- |
+| HQ → Branch | Routed without NAT |
+| Branch → HQ | Routed without NAT |
+| HQ → Simulated Internet | PAT |
+| Branch → Simulated Internet | PAT |
+
+After correcting R1's NAT policy:
+
+```text
+Infra-Server -> Branch-PC       Success
+Infra-Server -> SW4             Success
+Infra-Server -> External Server Success
+```
+
+SNMP polling of SW4 then succeeded across the routed HQ-to-Branch network.
+
+The NAT correction also allowed SW4 to successfully synchronize with the centralized NTP server.
+
+---
+
+### Final Monitoring Architecture
+
+The completed centralized services architecture includes:
+
+```text
+                    Infra-Server
+                   192.168.50.10
+                  /       |       \
+                 /        |        \
+              NTP       Syslog     SNMP
+            UDP 123     UDP 514   UDP 161
+               |           |         |
+               +-----------+---------+
+                           |
+                Network Infrastructure
+                           |
+        +------+------+----+----+------+------+
+        |      |      |         |      |      |
+       R1     R2     SW1       SW2    SW3    SW4
+```
+
+NTP provides centralized time synchronization.
+
+Syslog provides centralized event collection.
+
+SNMP provides centralized device and interface monitoring.
+
+Together, these services provide a basic model of the management and monitoring functions used in production network environments.
+
+---
+
+### Verification
+
+Network services and monitoring were verified using:
+
+```text
+show ntp associations
+show ntp status
+show clock
+show logging
+show running-config | include snmp
+show ip interface brief
+show vlan brief
+show ip route
+show ip nat translations
+show ip nat statistics
+show access-lists
+```
+
+The Packet Tracer MIB Browser was also used to perform SNMP GET operations for:
+
+```text
+sysName
+sysUpTime
+ifDescr
+ifAdminStatus
+ifOperStatus
+```
+
+The final network successfully demonstrated:
+
+- Centralized NTP
+- Centralized Syslog
+- Read-only SNMP monitoring
+- SNMP MIB/OID queries
+- Device uptime monitoring
+- Interface state monitoring
+- Multi-site network monitoring
+- Branch switch management
+- Routed HQ-to-Branch infrastructure access
+- OSPF reachability between sites
+- Bidirectional NAT exemption for internal traffic
+- PAT for simulated Internet traffic
+
+---
+
+### Lessons Learned
+
+- NTP provides a consistent time source across network infrastructure and improves event correlation and troubleshooting.
+- Syslog centralizes operational and security-related events generated by routers and switches.
+- SNMP allows an NMS to retrieve operational information without administrators manually logging into each device.
+- SNMP polling commonly uses UDP port 161, while Syslog commonly uses UDP port 514.
+- MIBs organize management information while OIDs identify individual values within the MIB hierarchy.
+- SNMP `sysName` can remotely identify a device.
+- SNMP `sysUpTime` can help identify unexpected device restarts.
+- `ifDescr`, `ifAdminStatus`, and `ifOperStatus` allow an NMS to identify interfaces and distinguish administrative shutdowns from operational failures.
+- Read-only SNMP follows least-privilege principles better than read-write access when only monitoring is required.
+- Community-string-based SNMP provides weaker security than SNMPv3 and should be carefully restricted in production environments.
+- Layer 2 switches require a management SVI and default gateway to communicate with management systems outside their local subnet.
+- A branch switch can use a local management SVI without extending an HQ management VLAN across a WAN.
+- NAT policies must distinguish internal routed traffic from traffic that actually requires address translation.
+- A NAT ACL `deny` can exempt traffic from translation without blocking the underlying routed traffic.
+- NAT translation tables are valuable troubleshooting tools and can reveal unexpected behavior affecting ICMP and application protocols such as NTP and SNMP.
+- Adding a second routed site can expose assumptions in NAT policies originally designed for a single-site Internet edge.
+- Troubleshooting application failures should begin by verifying network reachability before changing application-layer configuration.
+- NTP, Syslog, and SNMP complement one another by providing synchronized time, centralized events, and ongoing network-state monitoring.
+
+### Skills Demonstrated
+
+- Network Time Protocol (NTP)
+- Centralized Syslog
+- Simple Network Management Protocol (SNMP)
+- SNMP manager/agent architecture
+- SNMP GET operations
+- MIB navigation
+- OID interpretation
+- Device uptime monitoring
+- Interface monitoring
+- `ifIndex` correlation
+- Administrative vs. operational interface status
+- Read-only SNMP configuration
+- Cisco IOS logging configuration
+- Syslog severity interpretation
+- Management SVI configuration
+- Branch VLAN implementation
+- Multi-site infrastructure monitoring
+- OSPF route verification
+- NAT/PAT troubleshooting
+- Bidirectional NAT exemption
+- Extended ACL configuration
+- Centralized infrastructure services
+- Structured network troubleshooting
