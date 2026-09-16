@@ -1,0 +1,631 @@
+SYSLOG / CENTRALIZED LOGGING NOTES
+==================================
+
+Purpose
+-------
+Syslog provides centralized event logging for network devices.
+
+Instead of checking the console or local log buffer on every router and
+switch individually, devices can forward operational and security-related
+messages to a centralized Syslog server.
+
+This is useful for:
+
+- Troubleshooting
+- Monitoring device status
+- Detecting configuration changes
+- Tracking interface state changes
+- Security monitoring
+- Incident investigation
+- Correlating events between multiple devices
+
+In this lab, the Infra-Server in VLAN 50 acts as the centralized Syslog
+server for the network.
+
+
+SYSLOG SERVER
+-------------
+
+Device: Infra-Server
+IP Address: 192.168.50.10
+VLAN: 50 - SERVERS
+Default Gateway: 192.168.50.1
+Protocol: Syslog
+Transport: UDP
+Port: 514
+
+Syslog service was enabled under:
+
+Infra-Server
+Services -> SYSLOG -> On
+
+
+NETWORK DEVICES SENDING SYSLOG
+------------------------------
+
+R1:
+Source observed by server: 192.168.50.1
+
+R2:
+Source observed by server: 203.0.113.3
+
+SW1:
+Source observed by server: 192.168.99.2
+
+SW2:
+Source observed by server: 192.168.99.3
+
+SW3:
+Source observed by server: 192.168.99.4
+
+SW4:
+Source observed by server: 192.168.40.2
+
+All six infrastructure devices successfully sent Syslog messages to the
+centralized Infra-Server.
+
+
+BASIC CISCO SYSLOG CONFIGURATION
+--------------------------------
+
+The following command was configured on each router and switch:
+
+logging 192.168.50.10
+
+Example:
+
+conf t
+logging 192.168.50.10
+end
+
+
+SYSLOG VERIFICATION
+-------------------
+
+The primary IOS verification command used was:
+
+show logging
+
+Example output included:
+
+Trap logging: level informational
+
+Logging to 192.168.50.10 (udp port 514, audit disabled,
+ authentication disabled, encryption disabled, link up)
+
+This confirms that the device has a remote logging destination configured
+and is forwarding Syslog messages to 192.168.50.10 using UDP port 514.
+
+
+SYSLOG SEVERITY LEVELS
+----------------------
+
+Cisco Syslog messages use severity levels from 0 through 7.
+
+0 - Emergency
+    System is unusable.
+
+1 - Alert
+    Immediate action is required.
+
+2 - Critical
+    Critical condition.
+
+3 - Error
+    Error condition.
+
+4 - Warning
+    Warning condition.
+
+5 - Notification
+    Normal but significant condition.
+
+6 - Informational
+    Informational message.
+
+7 - Debugging
+    Debug-level information.
+
+IMPORTANT:
+
+A LOWER Syslog number represents a MORE severe event.
+
+For example:
+
+Severity 2 = more severe than Severity 6.
+
+
+TRAP LOGGING LEVEL
+------------------
+
+Packet Tracer did not support the expected commands:
+
+logging trap informational
+
+or:
+
+logging trap 6
+
+The available Packet Tracer CLI options were limited.
+
+However:
+
+show logging
+
+confirmed:
+
+Trap logging: level informational
+
+Therefore, the devices were already forwarding messages through severity
+level 6 (Informational).
+
+This is a Packet Tracer CLI limitation rather than a requirement to change
+the design.
+
+
+SYSLOG EVENT TEST
+-----------------
+
+A deliberate interface-state event was generated on SW1 to verify that
+operational events were actually reaching the centralized server.
+
+SW1 Fa0/4 was temporarily removed from its hardened unused-port
+configuration and configured as an access port for the test.
+
+Temporary configuration:
+
+interface fa0/4
+ description SYSLOG-TEST
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+
+The disconnected "Layer 8 Issue" laptop was then connected to Fa0/4.
+
+SW1 generated interface-state messages including:
+
+%LINK-5-CHANGED: Interface FastEthernet0/4, changed state to up
+
+The event appeared on the centralized Syslog server.
+
+This demonstrated the complete logging path:
+
+Physical Event
+      |
+      v
+SW1 detects interface state change
+      |
+      v
+IOS generates Syslog message
+      |
+      v
+UDP 514
+      |
+      v
+Infra-Server
+192.168.50.10
+      |
+      v
+Centralized Syslog table
+
+
+TEST CLEANUP
+------------
+
+After testing, the laptop was disconnected and Fa0/4 was returned to its
+hardened unused-port configuration.
+
+interface fa0/4
+ description UNUSED
+ switchport mode access
+ switchport access vlan 999
+ shutdown
+
+This restored the switch to its intended security configuration.
+
+
+SW4 MANAGEMENT CONFIGURATION
+----------------------------
+
+While integrating SW4 with centralized network services, SW4 initially had
+no management IP address.
+
+The branch network uses:
+
+192.168.40.0/24
+
+A dedicated local branch VLAN was created:
+
+VLAN 40
+Name: Branch
+
+SW4 ports:
+
+Fa0/1 -> R2
+Fa0/2 -> Branch-PC
+
+Both were assigned to VLAN 40.
+
+Configuration:
+
+vlan 40
+ name Branch
+
+interface fa0/1
+ description R2-BRANCH-GATEWAY
+ switchport mode access
+ switchport access vlan 40
+
+interface fa0/2
+ description BRANCH-PC
+ switchport mode access
+ switchport access vlan 40
+
+SW4 received the management address:
+
+192.168.40.2/24
+
+Configuration:
+
+interface vlan 40
+ description BRANCH-MANAGEMENT
+ ip address 192.168.40.2 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.40.1
+
+Verification showed:
+
+Vlan40    192.168.40.2    up    up
+
+This allows SW4 to be remotely managed through the routed branch network.
+
+HQ VLAN 99 was NOT extended across the WAN.
+
+Instead, the branch switch uses its local VLAN 40 SVI for management.
+
+
+BRANCH-TO-HQ TROUBLESHOOTING
+----------------------------
+
+After configuring SW4 management, SW4 could successfully reach its local
+default gateway:
+
+SW4 -> 192.168.40.1 = SUCCESS
+
+SW4 could also reach R2's WAN interface:
+
+SW4 -> 203.0.113.3 = SUCCESS
+
+However, SW4 could not initially reach:
+
+192.168.50.10
+
+The Branch-PC also failed to reach 192.168.50.10.
+
+This proved that the problem was not specific to the SW4 management SVI.
+
+
+ROUTING VERIFICATION
+--------------------
+
+R2 correctly learned VLAN 50 through OSPF:
+
+192.168.50.0/24
+via 203.0.113.2
+
+R2 itself could successfully ping:
+
+192.168.50.10
+
+R1 also correctly learned the Branch LAN through OSPF:
+
+192.168.40.0/24
+via 203.0.113.3
+
+Therefore, bidirectional OSPF routing was working correctly.
+
+
+NAT TROUBLESHOOTING
+-------------------
+
+R2 was originally configured to PAT all traffic sourced from:
+
+192.168.40.0/24
+
+using:
+
+access-list 1 permit 192.168.40.0 0.0.0.255
+
+ip nat inside source list 1 interface GigabitEthernet0/0/0 overload
+
+This caused traffic from the Branch LAN to HQ internal networks to be
+translated unnecessarily.
+
+A Branch-PC ping to 192.168.50.10 created translations similar to:
+
+Inside local:
+192.168.40.10
+
+Inside global:
+203.0.113.3
+
+Outside:
+192.168.50.10
+
+Therefore, R2 was performing PAT on Branch-to-HQ traffic.
+
+
+NAT EXEMPTION SOLUTION
+----------------------
+
+The simple standard NAT ACL was replaced with an extended ACL that
+distinguishes internal HQ traffic from Internet-bound traffic.
+
+Configuration:
+
+ip access-list extended BRANCH-NAT
+ deny ip 192.168.40.0 0.0.0.255 192.168.10.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.20.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.30.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.50.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.99.0 0.0.0.255
+ permit ip 192.168.40.0 0.0.0.255 any
+
+PAT was then configured using:
+
+ip nat inside source list BRANCH-NAT interface GigabitEthernet0/0/0 overload
+
+IMPORTANT:
+
+The deny statements in BRANCH-NAT do NOT deny the actual network traffic.
+
+Because this ACL is being referenced by NAT, the deny statements mean:
+
+"Do not translate this traffic."
+
+The permit statement means:
+
+"Translate matching traffic."
+
+Final behavior:
+
+Branch -> VLAN 10     No NAT
+Branch -> VLAN 20     No NAT
+Branch -> VLAN 30     No NAT
+Branch -> VLAN 50     No NAT
+Branch -> VLAN 99     No NAT
+Branch -> Other       PAT
+
+After the change:
+
+Branch-PC -> 192.168.50.10 = SUCCESS
+
+Branch-PC -> 198.51.100.10 = SUCCESS
+
+Therefore:
+
+Branch-to-HQ traffic remains routed normally through OSPF.
+
+Branch-to-Internet traffic continues to use PAT.
+
+
+SW4 CENTRALIZED SERVICES
+------------------------
+
+After correcting Branch-to-HQ connectivity, SW4 successfully reached:
+
+192.168.50.10
+
+SW4 was then configured for:
+
+NTP
+Syslog
+
+Configuration:
+
+ntp server 192.168.50.10
+logging 192.168.50.10
+
+Syslog verification showed:
+
+Logging to 192.168.50.10 (udp port 514, ... link up)
+
+The centralized Syslog table showed:
+
+192.168.40.2
+
+confirming successful SW4 logging.
+
+
+NTP AND SYSLOG RELATIONSHIP
+---------------------------
+
+NTP and Syslog are separate services, but they are commonly deployed
+together.
+
+NTP provides consistent device time.
+
+Syslog records events.
+
+Accurate synchronized timestamps make it much easier to correlate events
+between routers, switches, servers, firewalls, and security tools.
+
+For example:
+
+14:03:10 - SW1 interface goes down
+14:03:12 - R1 routing event occurs
+14:03:15 - Monitoring system reports connectivity loss
+
+Without synchronized clocks, determining the true order of events becomes
+much more difficult.
+
+
+PACKET TRACER LIMITATIONS
+-------------------------
+
+Several Packet Tracer limitations were observed.
+
+1. Syslog Time Column
+
+The Packet Tracer Syslog server displayed "-" in the Time column instead
+of rendering useful timestamps.
+
+2. HostName Column
+
+Packet Tracer displayed source IP addresses rather than useful configured
+hostnames.
+
+3. Message Display
+
+The Syslog table visually truncated messages.
+
+Selecting/highlighting an individual row displayed the complete message.
+
+4. Syslog Trap CLI
+
+Packet Tracer did not fully support normal IOS commands such as:
+
+logging trap informational
+
+However, show logging confirmed that the default trap level was already
+Informational.
+
+5. NTP Behavior
+
+Packet Tracer produced stale/phantom NTP associations on branch devices,
+including an unexpected association with:
+
+203.0.113.2
+
+even when the intended configured NTP server was:
+
+192.168.50.10
+
+SW4 also initially had a clock date in 1993. The clock was manually moved
+near the server's 2026 time before allowing NTP to continue.
+
+The intended NTP architecture remains:
+
+Network Devices
+      |
+      v
+192.168.50.10
+Infra-Server
+
+These NTP behaviors were treated as Packet Tracer simulation limitations
+rather than redesigning a correctly routed network around simulator
+behavior.
+
+
+KEY COMMANDS
+------------
+
+Configure remote Syslog server:
+
+logging 192.168.50.10
+
+Verify Syslog:
+
+show logging
+
+Verify management SVI:
+
+show ip interface brief
+
+Verify VLAN membership:
+
+show vlan brief
+
+Verify routing:
+
+show ip route
+
+Verify NAT translations:
+
+show ip nat translations
+
+Verify NAT statistics:
+
+show ip nat statistics
+
+Verify ACLs:
+
+show access-lists
+
+Verify NTP:
+
+show ntp associations
+show ntp status
+show clock
+
+
+KEY LESSONS
+-----------
+
+1. Syslog centralizes operational and security events from multiple
+   infrastructure devices.
+
+2. Cisco Syslog severity levels range from 0 through 7, with lower
+   numbers representing greater severity.
+
+3. Cisco devices commonly send Syslog traffic using UDP port 514.
+
+4. show logging can verify the configured logging server, trap level,
+   and message activity.
+
+5. Generating a controlled interface-state change is a simple way to
+   verify end-to-end Syslog functionality.
+
+6. Centralized logging is significantly more useful when devices also
+   have synchronized clocks.
+
+7. A Layer-2 switch requires a management SVI and default gateway to
+   communicate with devices outside its local subnet.
+
+8. A branch does not need to extend an HQ management VLAN across the WAN
+   simply to provide switch management.
+
+9. NAT ACLs define which traffic is translated. They should distinguish
+   internal routed traffic from Internet-bound traffic when necessary.
+
+10. A deny statement in an ACL used for NAT exemption means "do not
+    translate," not necessarily "drop the packet."
+
+11. Troubleshooting should isolate each layer before changing
+    configurations:
+
+    - Verify local connectivity
+    - Verify default gateway
+    - Verify routing
+    - Verify return routing
+    - Inspect NAT
+    - Inspect ACLs
+    - Verify the application/service
+
+12. Packet Tracer can simulate centralized Syslog effectively, but its
+    Syslog and NTP implementations have GUI and protocol limitations.
+
+
+SKILLS DEMONSTRATED
+-------------------
+
+- Cisco IOS Syslog configuration
+- Centralized network logging
+- Syslog severity interpretation
+- UDP 514 logging
+- Cisco IOS log verification
+- Controlled event generation
+- Layer-2 switch management
+- Management SVI configuration
+- VLAN creation and access-port configuration
+- Default gateway configuration
+- OSPF route verification
+- NAT/PAT troubleshooting
+- NAT exemption
+- Extended ACL configuration
+- Branch-to-HQ routing
+- Branch-to-Internet PAT
+- NTP integration
+- Packet Tracer troubleshooting
+- Infrastructure monitoring fundamentals
