@@ -2418,3 +2418,870 @@ The final network successfully demonstrated:
 - Extended ACL configuration
 - Centralized infrastructure services
 - Structured network troubleshooting
+## Module 14 - Network Services & Monitoring
+
+### Overview
+
+This module introduces centralized infrastructure services and discovery protocols used to manage, monitor, and troubleshoot network devices across the headquarters and branch networks.
+
+A dedicated infrastructure server was added to VLAN 50 to provide centralized network services.
+
+| Device | VLAN | IPv4 Address | Default Gateway |
+| --- | --- | --- | --- |
+| Infra-Server | 50 - SERVERS | 192.168.50.10/24 | 192.168.50.1 |
+
+The module implements:
+
+- Network Time Protocol (NTP)
+- Centralized Syslog
+- Simple Network Management Protocol (SNMP)
+- Cisco Discovery Protocol (CDP)
+- Link Layer Discovery Protocol (LLDP)
+- Branch switch management
+- Multi-site monitoring
+- NAT exemption for routed HQ-to-Branch communication
+- Discovery-protocol hardening
+
+Together, these technologies provide centralized time synchronization, event collection, network monitoring, topology discovery, and infrastructure-management capabilities.
+
+---
+
+### NTP
+
+#### Overview
+
+Network Time Protocol (NTP) was implemented to provide a centralized time source for network infrastructure.
+
+Accurate and consistent device clocks improve troubleshooting, monitoring, log correlation, and security investigations by allowing events from multiple devices to be placed on a common timeline.
+
+The Infra-Server at `192.168.50.10` acts as the centralized NTP server.
+
+#### Implemented
+
+The infrastructure devices were configured with:
+
+```text
+ntp server 192.168.50.10
+```
+
+NTP was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+During implementation, SW3 was found to be missing a management SVI.
+
+A management address was added in VLAN 99:
+
+```text
+interface vlan 99
+ description MANAGEMENT
+ ip address 192.168.99.4 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.99.1
+```
+
+VLAN 50 was also added to R1's OSPF configuration so the Branch network could learn a route to the infrastructure server:
+
+```text
+router ospf 1
+ network 192.168.50.0 0.0.0.255 area 0
+```
+
+R2 subsequently learned `192.168.50.0/24` through OSPF.
+
+#### Verification
+
+NTP was examined using:
+
+```text
+show ntp associations
+show ntp status
+show clock
+```
+
+Centralized NTP operation was successfully demonstrated across the network.
+
+SW4 initially experienced synchronization problems. Later troubleshooting revealed that R1 was incorrectly applying PAT to NTP traffic traveling from the Infra-Server toward the Branch network.
+
+After correcting the HQ NAT policy, SW4 reported:
+
+```text
+Clock is synchronized, stratum 2, reference is 192.168.50.10
+```
+
+and `192.168.50.10` appeared as the selected NTP peer.
+
+This confirmed successful centralized NTP operation across the routed HQ and Branch networks.
+
+Packet Tracer continued to display an additional stale association with `203.0.113.2` on SW4, but the correct Infra-Server was selected as the active NTP reference.
+
+---
+
+### Centralized Syslog
+
+#### Overview
+
+Centralized Syslog was implemented to provide a single location for operational and infrastructure events generated throughout the network.
+
+Instead of relying only on individual device consoles or local log buffers, routers and switches forward messages to the Infra-Server at `192.168.50.10`.
+
+Syslog provides centralized visibility for:
+
+- Interface state changes
+- Configuration changes
+- Operational events
+- Troubleshooting
+- Security monitoring
+- Incident investigation
+
+Packet Tracer uses UDP port 514 for Syslog.
+
+#### Implemented
+
+Remote logging was configured using:
+
+```text
+logging 192.168.50.10
+```
+
+Centralized logging was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+The Syslog server successfully received messages from all six devices.
+
+| Device | Observed Syslog Source |
+| --- | --- |
+| R1 | 192.168.50.1 |
+| R2 | 203.0.113.3 |
+| SW1 | 192.168.99.2 |
+| SW2 | 192.168.99.3 |
+| SW3 | 192.168.99.4 |
+| SW4 | 192.168.40.2 |
+
+`show logging` confirmed that devices were forwarding messages to the centralized server using UDP port 514.
+
+Example:
+
+```text
+Trap logging: level informational
+Logging to 192.168.50.10 (udp port 514)
+```
+
+#### Syslog Event Verification
+
+A controlled interface-state change was generated on SW1 to verify end-to-end logging.
+
+SW1 Fa0/4 was temporarily configured as an active access port and connected to the lab's disconnected test laptop.
+
+The resulting interface event generated a Syslog message similar to:
+
+```text
+%LINK-5-CHANGED: Interface FastEthernet0/4, changed state to up
+```
+
+The event appeared on the Infra-Server's centralized Syslog table.
+
+After testing, Fa0/4 was returned to its hardened unused-port configuration:
+
+```text
+interface fa0/4
+ description UNUSED
+ switchport mode access
+ switchport access vlan 999
+ shutdown
+```
+
+---
+
+### Branch Switch Management
+
+SW4 originally operated only as an unmanaged Layer 2 access switch.
+
+To integrate SW4 with centralized infrastructure services, a management SVI was added using the local Branch network.
+
+A dedicated Branch VLAN was created:
+
+```text
+vlan 40
+ name Branch
+```
+
+The R2 and Branch-PC interfaces were assigned to VLAN 40:
+
+```text
+interface fa0/1
+ description R2-BRANCH-GATEWAY
+ switchport mode access
+ switchport access vlan 40
+
+interface fa0/2
+ description BRANCH-PC
+ switchport mode access
+ switchport access vlan 40
+```
+
+SW4 received the management address `192.168.40.2/24`:
+
+```text
+interface vlan 40
+ description BRANCH-MANAGEMENT
+ ip address 192.168.40.2 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.40.1
+```
+
+Verification showed:
+
+```text
+Vlan40    192.168.40.2    up    up
+```
+
+This allows SW4 to communicate with centralized infrastructure services through the routed Branch network without extending the headquarters VLAN 99 management network across the WAN.
+
+---
+
+### Branch-to-HQ NAT Exemption
+
+While integrating SW4 with centralized services, SW4 and the Branch-PC initially could not reach the Infra-Server even though OSPF routes existed in both directions.
+
+Inspection of R2's NAT translation table revealed that Branch-to-HQ traffic was being unnecessarily translated.
+
+R2's original NAT policy matched all traffic sourced from `192.168.40.0/24` regardless of destination.
+
+The standard NAT ACL was replaced with a destination-aware extended ACL:
+
+```text
+ip access-list extended BRANCH-NAT
+ deny ip 192.168.40.0 0.0.0.255 192.168.10.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.20.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.30.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.50.0 0.0.0.255
+ deny ip 192.168.40.0 0.0.0.255 192.168.99.0 0.0.0.255
+ permit ip 192.168.40.0 0.0.0.255 any
+```
+
+PAT was then configured using:
+
+```text
+ip nat inside source list BRANCH-NAT interface GigabitEthernet0/0/0 overload
+```
+
+The ACL `deny` entries exempt internal HQ destinations from NAT. They do not block the underlying routed traffic.
+
+After the change:
+
+```text
+Branch-PC -> 192.168.50.10   Success
+Branch-PC -> 198.51.100.10   Success
+SW4       -> 192.168.50.10   Success
+```
+
+This confirmed that Branch-to-HQ traffic remains normally routed while Internet-bound Branch traffic continues to use PAT.
+
+---
+
+### SNMP
+
+#### Overview
+
+Simple Network Management Protocol (SNMP) was implemented to demonstrate centralized infrastructure monitoring.
+
+SNMP allows a Network Management System (NMS) to retrieve operational information from routers and switches without administrators manually logging into each device.
+
+Typical SNMP monitoring can include:
+
+- Device identity
+- Device uptime
+- Interface inventory
+- Administrative interface state
+- Operational interface state
+- Interface counters
+- Device availability
+- Performance metrics
+
+The Infra-Server's MIB Browser was used as the lab's SNMP manager.
+
+Network devices operate as SNMP agents.
+
+SNMP polling uses UDP port 161.
+
+#### Implemented
+
+A read-only SNMP community was configured on all six infrastructure devices:
+
+```text
+snmp-server community DOM-NMS-RO ro
+```
+
+SNMP was configured on:
+
+- R1
+- R2
+- SW1
+- SW2
+- SW3
+- SW4
+
+Read-only access was selected because the objective is monitoring rather than remote modification.
+
+The Packet Tracer implementation exposed simplified community-string-based SNMP configuration. Production environments should restrict SNMP access to authorized management systems and generally prefer SNMPv3 when supported.
+
+---
+
+### MIB and OID Queries
+
+The Packet Tracer MIB Browser was used to perform SNMP GET operations.
+
+A Management Information Base (MIB) organizes information exposed by an SNMP-enabled device.
+
+An Object Identifier (OID) identifies a specific value within that hierarchy.
+
+The first R1 query requested:
+
+```text
+sysName
+```
+
+OID:
+
+```text
+.1.3.6.1.2.1.1.5.0
+```
+
+The query returned:
+
+```text
+R1
+```
+
+The NMS then queried:
+
+```text
+sysUpTime
+```
+
+OID:
+
+```text
+.1.3.6.1.2.1.1.3.0
+```
+
+The response reported approximately:
+
+```text
+20 hours 11 minutes 51 seconds
+```
+
+This demonstrated how an NMS can remotely identify devices, determine uptime, and potentially detect unexpected restarts.
+
+---
+
+### SNMP Interface Monitoring
+
+R1's interface MIB was queried using:
+
+```text
+ifDescr
+ifAdminStatus
+ifOperStatus
+```
+
+`ifDescr` mapped SNMP interface indexes to recognizable IOS interfaces.
+
+Example results included:
+
+| Index | Interface |
+| ---: | --- |
+| 1 | GigabitEthernet0/0/0 |
+| 2 | GigabitEthernet0/0/1 |
+| 3 | GigabitEthernet0/0/2 |
+| 4 | GigabitEthernet0/0/0.10 |
+| 5 | GigabitEthernet0/0/0.20 |
+| 6 | GigabitEthernet0/0/0.30 |
+
+For R1 interface index 3:
+
+```text
+Interface:     GigabitEthernet0/0/2
+Admin Status:  down
+Oper Status:   down
+```
+
+This demonstrates how an NMS can distinguish an administratively disabled interface from an enabled interface that unexpectedly loses connectivity.
+
+---
+
+### SNMP Multi-Site Verification
+
+SNMP polling was successfully verified against SW1 using:
+
+```text
+Target: 192.168.99.2
+Object: sysName
+OID:    .1.3.6.1.2.1.1.5.0
+```
+
+The query returned:
+
+```text
+SW1
+```
+
+The initial SNMP query against SW4 at `192.168.40.2` failed.
+
+Testing showed that the Infra-Server could not ping either SW4 or the Branch-PC, proving the problem was network reachability rather than SNMP configuration.
+
+---
+
+### HQ-to-Branch NAT Exemption
+
+R1's NAT translation table was inspected while the Infra-Server attempted to communicate with the Branch.
+
+The table showed that traffic from `192.168.50.10` was being translated to `203.0.113.2` even when its destination was the internal Branch network.
+
+The NAT table also showed UDP port 123 traffic from the Infra-Server toward SW4 being translated, revealing that the same NAT policy was interfering with NTP communication.
+
+R1's original standard NAT ACL was replaced with a destination-aware extended ACL:
+
+```text
+ip access-list extended HQ-NAT
+ deny ip 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.30.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.50.0 0.0.0.255 192.168.40.0 0.0.0.255
+ deny ip 192.168.99.0 0.0.0.255 192.168.40.0 0.0.0.255
+ permit ip 192.168.10.0 0.0.0.255 any
+ permit ip 192.168.20.0 0.0.0.255 any
+ permit ip 192.168.30.0 0.0.0.255 any
+ permit ip 192.168.50.0 0.0.0.255 any
+ permit ip 192.168.99.0 0.0.0.255 any
+```
+
+PAT was then configured using:
+
+```text
+ip nat inside source list HQ-NAT interface GigabitEthernet0/0/1 overload
+```
+
+The final NAT design is:
+
+| Traffic | Behavior |
+| --- | --- |
+| HQ → Branch | Routed without NAT |
+| Branch → HQ | Routed without NAT |
+| HQ → Simulated Internet | PAT |
+| Branch → Simulated Internet | PAT |
+
+After correcting R1's NAT policy:
+
+```text
+Infra-Server -> Branch-PC       Success
+Infra-Server -> SW4             Success
+Infra-Server -> External Server Success
+```
+
+SNMP polling of SW4 then succeeded across the routed HQ-to-Branch network.
+
+The NAT correction also allowed SW4 to successfully synchronize with the centralized NTP server.
+
+---
+
+### CDP
+
+#### Overview
+
+Cisco Discovery Protocol (CDP) was examined as a Layer 2 topology-discovery and troubleshooting protocol.
+
+CDP allows directly connected Cisco devices to advertise information including:
+
+- Device identity
+- Platform
+- Device capabilities
+- Local and remote interfaces
+- Management addresses
+- IOS/software information
+
+Because CDP operates at Layer 2, basic neighbor discovery does not depend on devices sharing the same IP subnet.
+
+#### Verification
+
+CDP was already enabled on the Packet Tracer Cisco switches.
+
+SW1 reported:
+
+```text
+Sending CDP packets every 60 seconds
+Sending a holdtime value of 180 seconds
+Sending CDPv2 advertisements is enabled
+```
+
+The command:
+
+```text
+show cdp neighbors
+```
+
+identified SW1's infrastructure neighbors, including:
+
+- SW2
+- R1
+- SW3
+
+For example, CDP identified the physical SW1-to-SW3 relationship as:
+
+```text
+SW1 Fa0/23 <------> SW3 Fa0/23
+```
+
+Detailed discovery was performed with:
+
+```text
+show cdp neighbors detail
+```
+
+CDP identified SW3 information including:
+
+```text
+Device ID:      SW3
+IP Address:     192.168.99.4
+Platform:       Cisco 2960
+Capability:     Switch
+Remote Port:    FastEthernet0/23
+Duplex:         Full
+```
+
+Packet Tracer also displayed additional CDP entries associated with R1's router-on-a-stick subinterfaces and SW1/SW2's EtherChannel. These represent the existing logical/physical relationships rather than additional neighboring devices.
+
+---
+
+### CDP Interface Hardening
+
+CDP provides useful infrastructure information but can also expose network topology, management addresses, hardware models, and software versions to directly connected systems.
+
+SW1 Fa0/1 connects to an HR endpoint and does not require CDP advertisements.
+
+CDP was disabled specifically on the endpoint-facing interface:
+
+```text
+interface fa0/1
+ no cdp enable
+```
+
+Verification with:
+
+```text
+show cdp interface fa0/1
+```
+
+confirmed that CDP was no longer active on the interface.
+
+CDP remained globally enabled and continued operating on trusted infrastructure links.
+
+This demonstrates interface-level discovery-protocol hardening without sacrificing CDP's troubleshooting value within the network infrastructure.
+
+---
+
+### LLDP
+
+#### Overview
+
+Link Layer Discovery Protocol (LLDP) was implemented as the vendor-neutral alternative to CDP.
+
+LLDP is standardized as:
+
+```text
+IEEE 802.1AB
+```
+
+Like CDP, LLDP operates at Layer 2 and allows directly connected devices to advertise topology and device information.
+
+Unlike Cisco-proprietary CDP, LLDP can provide standardized discovery across multi-vendor environments.
+
+#### Implemented
+
+LLDP was initially disabled in Packet Tracer:
+
+```text
+% LLDP is not enabled
+```
+
+It was enabled using:
+
+```text
+lldp run
+```
+
+LLDP was enabled on SW1 and SW3 to demonstrate neighbor discovery.
+
+The observed LLDP settings were:
+
+```text
+Status: ACTIVE
+LLDP advertisements are sent every 30 seconds
+LLDP hold time advertised is 120 seconds
+LLDP interface reinitialisation delay is 2 seconds
+```
+
+After LLDP was enabled on both devices, SW3 discovered SW1:
+
+```text
+Device ID:    SW1
+Local Intf:   Fa0/23
+Hold-time:    120
+Capability:   B
+Port ID:      Fa0/23
+```
+
+This independently verified:
+
+```text
+SW3 Fa0/23 <------> SW1 Fa0/23
+```
+
+LLDP reports the Cisco switch using the `B` capability for Bridge.
+
+---
+
+### LLDP Detailed Discovery
+
+The command:
+
+```text
+show lldp neighbors detail
+```
+
+provided additional information about SW1, including:
+
+- Chassis ID
+- Port ID
+- Port description
+- System name
+- System description
+- IOS version
+- System capabilities
+- Auto-negotiation state
+- Physical media capabilities
+- VLAN information
+
+The Packet Tracer LLDP output reported:
+
+```text
+Management Addresses - not advertised
+```
+
+LLDP supports management-address advertisement, but the simulated devices did not advertise one in this lab.
+
+The output also displayed VLAN 999 information on the SW1-to-SW3 interface. Because the port had previously been configured as an unused VLAN 999 access port before becoming a trunk, discovery output was correlated with the actual trunk configuration rather than interpreted as proof that the operational trunk carried only VLAN 999.
+
+---
+
+### LLDP Interface Controls
+
+LLDP provides separate interface controls for sending and receiving advertisements:
+
+```text
+lldp transmit
+lldp receive
+```
+
+Transmission can be independently disabled using:
+
+```text
+no lldp transmit
+```
+
+while reception can be independently disabled using:
+
+```text
+no lldp receive
+```
+
+This provides more granular directional discovery control than CDP's interface-level enable/disable behavior.
+
+---
+
+### CDP vs. LLDP
+
+| Feature | CDP | LLDP |
+| --- | --- | --- |
+| Protocol Type | Cisco proprietary | IEEE standard |
+| Standard | Cisco | IEEE 802.1AB |
+| Layer | Layer 2 | Layer 2 |
+| Multi-Vendor | Limited | Yes |
+| PT Initial State | Enabled | Disabled |
+| Observed Advertisement Interval | 60 seconds | 30 seconds |
+| Observed Holdtime | 180 seconds | 120 seconds |
+| Interface Direction Control | Enable/Disable | Separate TX/RX controls |
+| Primary Purpose | Neighbor discovery | Neighbor discovery |
+
+Both protocols are useful for:
+
+- Topology discovery
+- Cabling verification
+- Remote-interface identification
+- Hardware inventory
+- Troubleshooting
+- Documentation verification
+
+Discovery protocols should be limited on untrusted interfaces when their information is not operationally required.
+
+---
+
+### Final Monitoring Architecture
+
+The completed centralized management and monitoring architecture includes:
+
+```text
+                    Infra-Server
+                   192.168.50.10
+                  /       |       \
+                 /        |        \
+              NTP       Syslog     SNMP
+            UDP 123     UDP 514   UDP 161
+               |           |         |
+               +-----------+---------+
+                           |
+                Network Infrastructure
+                           |
+        +------+------+----+----+------+------+
+        |      |      |         |      |      |
+       R1     R2     SW1       SW2    SW3    SW4
+
+              Infrastructure Links
+                       |
+                 CDP / LLDP
+                       |
+              Topology Discovery
+```
+
+NTP provides centralized time synchronization.
+
+Syslog provides centralized event collection.
+
+SNMP provides centralized device and interface monitoring.
+
+CDP and LLDP provide Layer 2 neighbor and topology discovery.
+
+Together, these technologies provide a basic model of the management, monitoring, and discovery functions used in production network environments.
+
+---
+
+### Verification
+
+Network services and monitoring were verified using:
+
+```text
+show ntp associations
+show ntp status
+show clock
+show logging
+show running-config | include snmp
+show ip interface brief
+show vlan brief
+show ip route
+show ip nat translations
+show ip nat statistics
+show access-lists
+show cdp
+show cdp neighbors
+show cdp neighbors detail
+show cdp interface
+show lldp
+show lldp neighbors
+show lldp neighbors detail
+```
+
+The Packet Tracer MIB Browser was also used to perform SNMP GET operations for:
+
+```text
+sysName
+sysUpTime
+ifDescr
+ifAdminStatus
+ifOperStatus
+```
+
+The final network successfully demonstrated:
+
+- Centralized NTP
+- Centralized Syslog
+- Read-only SNMP monitoring
+- SNMP MIB/OID queries
+- Device uptime monitoring
+- Interface-state monitoring
+- Multi-site network monitoring
+- Branch switch management
+- CDP neighbor discovery
+- LLDP neighbor discovery
+- Layer 2 topology mapping
+- Discovery-protocol interface hardening
+- Routed HQ-to-Branch infrastructure access
+- OSPF reachability between sites
+- Bidirectional NAT exemption for internal traffic
+- PAT for simulated Internet traffic
+
+---
+
+### Lessons Learned
+
+- NTP provides a consistent time source across network infrastructure and improves event correlation and troubleshooting.
+- Syslog centralizes operational and security-related events generated by routers and switches.
+- SNMP allows an NMS to retrieve operational information without administrators manually logging into each device.
+- SNMP polling commonly uses UDP port 161, while Syslog commonly uses UDP port 514.
+- MIBs organize management information while OIDs identify individual values within the MIB hierarchy.
+- `sysName`, `sysUpTime`, `ifDescr`, `ifAdminStatus`, and `ifOperStatus` provide useful device and interface monitoring information.
+- Read-only SNMP follows least-privilege principles better than read-write access when only monitoring is required.
+- Community-string-based SNMP provides weaker security than SNMPv3 and should be carefully restricted in production environments.
+- Layer 2 switches require a management SVI and default gateway to communicate with management systems outside their local subnet.
+- NAT policies must distinguish internal routed traffic from traffic that actually requires address translation.
+- NAT translation tables can reveal unexpected behavior affecting protocols such as ICMP, NTP, and SNMP.
+- Adding a second routed site can expose assumptions in NAT policies originally designed for a single-site Internet edge.
+- CDP provides detailed Cisco neighbor information and can rapidly identify directly connected infrastructure.
+- LLDP provides similar Layer 2 discovery using the vendor-neutral IEEE 802.1AB standard.
+- LLDP provides independent transmit and receive controls.
+- Discovery protocols can expose useful infrastructure information and should be limited on untrusted interfaces when unnecessary.
+- Packet Tracer may display unusual discovery information for router subinterfaces, EtherChannels, or previously configured VLAN settings.
+- Discovery output should be correlated with authoritative interface and switching configuration.
+- NTP, Syslog, SNMP, CDP, and LLDP complement one another by providing synchronized time, centralized events, operational monitoring, and topology discovery.
+
+### Skills Demonstrated
+
+- Network Time Protocol (NTP)
+- Centralized Syslog
+- Simple Network Management Protocol (SNMP)
+- SNMP manager/agent architecture
+- SNMP GET operations
+- MIB navigation
+- OID interpretation
+- Device uptime monitoring
+- Interface monitoring
+- Cisco Discovery Protocol (CDP)
+- Link Layer Discovery Protocol (LLDP)
+- IEEE 802.1AB
+- Layer 2 topology discovery
+- Local and remote interface mapping
+- Device/platform discovery
+- Discovery-protocol security
+- LLDP transmit/receive controls
+- Management SVI configuration
+- Branch VLAN implementation
+- Multi-site infrastructure monitoring
+- OSPF route verification
+- NAT/PAT troubleshooting
+- Bidirectional NAT exemption
+- Extended ACL configuration
+- Centralized infrastructure services
+- Structured network troubleshooting

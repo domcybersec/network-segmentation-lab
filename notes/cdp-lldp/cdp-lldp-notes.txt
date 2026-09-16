@@ -1,0 +1,925 @@
+CDP AND LLDP NOTES
+==================
+
+PURPOSE
+-------
+
+CDP and LLDP are Layer 2 neighbor-discovery protocols.
+
+They allow directly connected network devices to advertise information
+about themselves to neighboring devices.
+
+This information can help network administrators discover and document
+network topology without manually tracing every physical connection.
+
+Commonly discovered information includes:
+
+- Device hostname
+- Device/platform type
+- Local interface
+- Remote interface
+- Device capabilities
+- Software/IOS version
+- Management information
+- Duplex/link information
+
+Discovery protocols are especially useful when troubleshooting an
+unfamiliar network or verifying that physical connections match network
+documentation.
+
+
+CDP
+===
+
+CDP stands for:
+
+Cisco Discovery Protocol
+
+CDP is a Cisco proprietary Layer 2 discovery protocol.
+
+It is primarily intended for discovery between directly connected Cisco
+devices.
+
+Because CDP operates at Layer 2, neighboring devices do not need to have
+IP addresses in the same subnet for basic CDP neighbor discovery.
+
+
+CDP DEFAULT STATE
+-----------------
+
+On the Packet Tracer Cisco 2960 used in this lab, CDP was already enabled.
+
+The command:
+
+show cdp
+
+returned:
+
+Global CDP information:
+  Sending CDP packets every 60 seconds
+  Sending a holdtime value of 180 seconds
+  Sending CDPv2 advertisements is enabled
+
+Therefore, the observed Packet Tracer defaults were:
+
+Advertisement interval:
+60 seconds
+
+Holdtime:
+180 seconds
+
+CDPv2:
+Enabled
+
+
+CDP ADVERTISEMENT TIMER
+-----------------------
+
+CDP advertisements are periodically transmitted to directly connected
+neighbors.
+
+In this lab, advertisements were sent every:
+
+60 seconds
+
+This periodically refreshes the information stored in neighboring CDP
+tables.
+
+
+CDP HOLDTIME
+------------
+
+The CDP holdtime determines how long a neighboring device retains a CDP
+entry without receiving another advertisement.
+
+The observed holdtime was:
+
+180 seconds
+
+For example, show cdp neighbors displayed values such as:
+
+178
+131
+130
+
+These values represented the remaining holdtime for the corresponding
+neighbor entry.
+
+When another CDP advertisement is received, the timer is refreshed.
+
+If advertisements stop completely, the entry eventually ages out.
+
+
+CDP NEIGHBOR DISCOVERY
+----------------------
+
+The command:
+
+show cdp neighbors
+
+was executed on SW1.
+
+SW1 discovered the following infrastructure neighbors:
+
+- SW2
+- R1
+- SW3
+
+The output includes:
+
+Device ID
+Local Interface
+Holdtime
+Capability
+Platform
+Port ID
+
+
+DEVICE ID
+---------
+
+Device ID identifies the neighboring device.
+
+Example:
+
+SW3
+
+This corresponds to the neighbor's hostname/device identity.
+
+
+LOCAL INTERFACE
+---------------
+
+Local Interface identifies the interface on the device where the command
+is being executed.
+
+Example:
+
+SW1:
+
+Local Interface:
+FastEthernet0/23
+
+This means SW1 receives the neighbor advertisement through Fa0/23.
+
+
+PORT ID
+-------
+
+Port ID identifies the interface on the neighboring device.
+
+Example:
+
+SW1 output:
+
+Local Interface:
+FastEthernet0/23
+
+Neighbor:
+SW3
+
+Port ID:
+FastEthernet0/23
+
+This identifies the physical relationship as:
+
+SW1 Fa0/23 <------> SW3 Fa0/23
+
+
+CAPABILITY
+----------
+
+CDP advertises device capabilities.
+
+Examples observed in the lab:
+
+R = Router
+S = Switch
+
+R1 appeared with:
+
+Capability:
+R
+
+SW2 and SW3 appeared with:
+
+Capability:
+S
+
+
+PLATFORM
+--------
+
+CDP also identified the hardware/platform of neighboring devices.
+
+Examples:
+
+SW3:
+Cisco 2960
+
+R1:
+Cisco ISR4300
+
+This can help administrators build a hardware inventory while mapping the
+network.
+
+
+CDP AND ETHERCHANNEL
+--------------------
+
+SW1 and SW2 are connected using an LACP EtherChannel consisting of:
+
+Fa0/21
+Fa0/22
+
+Logical interface:
+
+Port-channel1
+
+Packet Tracer displayed multiple CDP entries associated with this
+EtherChannel relationship.
+
+Entries referenced:
+
+Fa0/21
+Fa0/22
+Port-channel1
+
+These entries represent the same logical SW1-to-SW2 relationship rather
+than three separate neighboring switches.
+
+The intended logical relationship remains:
+
+SW1 Po1 <------> SW2 Po1
+
+
+CDP AND ROUTER SUBINTERFACES
+----------------------------
+
+R1 uses router-on-a-stick with multiple 802.1Q subinterfaces.
+
+R1 interfaces include:
+
+GigabitEthernet0/0/0.10
+GigabitEthernet0/0/0.20
+GigabitEthernet0/0/0.30
+GigabitEthernet0/0/0.50
+GigabitEthernet0/0/0.99
+
+Packet Tracer displayed separate CDP entries for several of these
+subinterfaces.
+
+This does NOT represent multiple physical connections between SW1 and R1.
+
+The physical topology remains:
+
+SW1 Gi0/1 <------> R1 Gi0/0/0
+
+The additional entries are a Packet Tracer representation of R1's
+router-on-a-stick subinterfaces.
+
+
+DETAILED CDP INFORMATION
+------------------------
+
+The command:
+
+show cdp neighbors detail
+
+provides substantially more information than the standard neighbor table.
+
+For SW3, SW1 learned information including:
+
+Device ID:
+SW3
+
+Management IP:
+192.168.99.4
+
+Platform:
+Cisco 2960
+
+Capability:
+Switch
+
+Local Interface:
+FastEthernet0/23
+
+Remote Interface:
+FastEthernet0/23
+
+Software:
+Cisco IOS 15.0(2)SE4
+
+Duplex:
+Full
+
+
+CDP MANAGEMENT ADDRESS
+----------------------
+
+One of the most useful pieces of detailed CDP information is the
+neighbor's management address.
+
+For example:
+
+SW3
+192.168.99.4
+
+An administrator connected to SW1 could discover SW3 through CDP and then
+use the discovered management address to continue troubleshooting or
+network discovery.
+
+This makes CDP useful for mapping an unfamiliar Cisco network.
+
+
+CDP SECURITY CONSIDERATION
+--------------------------
+
+CDP can reveal useful infrastructure information to directly connected
+devices.
+
+Information may include:
+
+- Device hostnames
+- Management IP addresses
+- Hardware platforms
+- IOS versions
+- Physical topology
+- Interface information
+- Device capabilities
+
+This information is useful to administrators but can also provide
+reconnaissance information to an unauthorized user connected to the
+network.
+
+For this reason, discovery protocols should not necessarily be
+advertised toward untrusted endpoints when they are not required.
+
+
+GLOBAL CDP CONTROL
+------------------
+
+CDP can be disabled globally with:
+
+no cdp run
+
+This disables CDP across the entire device.
+
+Because CDP is useful between infrastructure devices in this lab, global
+CDP was NOT disabled.
+
+
+INTERFACE-LEVEL CDP CONTROL
+---------------------------
+
+CDP can also be controlled on individual interfaces.
+
+SW1 Fa0/1 connects to an HR workstation.
+
+Before hardening:
+
+show cdp interface fa0/1
+
+returned:
+
+FastEthernet0/1 is up, line protocol is up
+  Sending CDP packets every 60 seconds
+  Holdtime is 180 seconds
+
+There is no operational requirement for SW1 to advertise infrastructure
+discovery information toward the HR workstation.
+
+CDP was therefore disabled specifically on Fa0/1:
+
+interface fa0/1
+ no cdp enable
+
+Verification:
+
+show cdp interface fa0/1
+
+returned no CDP interface information.
+
+CDP remained operational globally and continued discovering infrastructure
+neighbors including:
+
+SW2
+R1
+SW3
+
+This demonstrated interface-level discovery-protocol hardening without
+removing CDP from trusted infrastructure links.
+
+
+LLDP
+====
+
+LLDP stands for:
+
+Link Layer Discovery Protocol
+
+LLDP provides functionality similar to CDP but is an open,
+vendor-neutral standard.
+
+LLDP is standardized as:
+
+IEEE 802.1AB
+
+This allows LLDP to be used in multi-vendor environments containing
+network infrastructure from different manufacturers.
+
+
+CDP VS LLDP
+-----------
+
+CDP:
+
+- Cisco proprietary
+- Layer 2 discovery
+- Commonly used between Cisco devices
+- Enabled by default on the Packet Tracer switch used in this lab
+
+LLDP:
+
+- IEEE 802.1AB standard
+- Vendor-neutral
+- Layer 2 discovery
+- Useful in mixed-vendor environments
+- Disabled by default on the Packet Tracer switch used in this lab
+
+
+LLDP GLOBAL CONFIGURATION
+-------------------------
+
+Before configuration:
+
+show lldp
+
+returned:
+
+% LLDP is not enabled
+
+LLDP was enabled globally using:
+
+lldp run
+
+Verification:
+
+show lldp
+
+returned:
+
+Global LLDP Information:
+  Status: ACTIVE
+  LLDP advertisements are sent every 30 seconds
+  LLDP hold time advertised is 120 seconds
+  LLDP interface reinitialisation delay is 2 seconds
+
+
+LLDP TIMERS
+-----------
+
+Observed Packet Tracer LLDP settings:
+
+Advertisement interval:
+30 seconds
+
+Holdtime:
+120 seconds
+
+Interface reinitialization delay:
+2 seconds
+
+Compared with the observed CDP settings:
+
+CDP advertisement:
+60 seconds
+
+CDP holdtime:
+180 seconds
+
+LLDP advertisement:
+30 seconds
+
+LLDP holdtime:
+120 seconds
+
+
+LLDP NEIGHBOR DISCOVERY
+-----------------------
+
+LLDP was initially enabled only on SW1.
+
+The command:
+
+show lldp neighbors
+
+returned:
+
+Total entries displayed: 0
+
+This was expected because SW1's neighboring devices were not yet
+participating in LLDP.
+
+LLDP was then enabled on SW3:
+
+lldp run
+
+SW3 subsequently discovered SW1.
+
+The output included:
+
+Device ID:
+SW1
+
+Local Interface:
+Fa0/23
+
+Holdtime:
+120
+
+Capability:
+B
+
+Remote Port:
+Fa0/23
+
+This confirmed:
+
+SW3 Fa0/23 <------> SW1 Fa0/23
+
+
+LLDP CAPABILITY B
+-----------------
+
+CDP identified Cisco switches using:
+
+S = Switch
+
+LLDP displayed:
+
+B = Bridge
+
+Ethernet switches perform Layer 2 bridging, so the bridge capability is
+the LLDP representation used for the Cisco 2960 in this lab.
+
+
+DETAILED LLDP INFORMATION
+-------------------------
+
+The command:
+
+show lldp neighbors detail
+
+was executed on SW3.
+
+The output for SW1 included:
+
+Chassis ID
+Port ID
+Port Description
+System Name
+System Description
+Time Remaining
+System Capabilities
+Enabled Capabilities
+Management Address information
+Auto-Negotiation information
+Physical media capabilities
+VLAN information
+
+
+EXAMPLE LLDP DETAIL
+-------------------
+
+SW3 learned:
+
+System Name:
+SW1
+
+Remote Port:
+Fa0/23
+
+Port Description:
+FastEthernet0/23
+
+System Description:
+Cisco IOS Software, C2960
+IOS 15.0(2)SE4
+
+System Capability:
+B
+
+Auto Negotiation:
+Supported and enabled
+
+Physical media capabilities included:
+
+100baseT Full Duplex
+100baseT Half Duplex
+1000baseT Full Duplex
+
+
+LLDP CHASSIS ID
+---------------
+
+LLDP displayed a chassis identifier for SW1.
+
+Example:
+
+Chassis ID:
+0001.C96B.4417
+
+A chassis ID provides a unique identifier that an LLDP neighbor can use
+to identify the advertising system.
+
+
+LLDP MANAGEMENT ADDRESS
+-----------------------
+
+The detailed LLDP output reported:
+
+Management Addresses - not advertised
+
+This differs from the CDP output in this Packet Tracer lab, where
+management IP addresses such as SW3's 192.168.99.4 were advertised.
+
+LLDP as a protocol supports management-address information.
+
+The absence of the address in this lab reflects the behavior/configuration
+of Packet Tracer's LLDP implementation and should not be interpreted as
+a limitation of LLDP itself.
+
+
+LLDP VLAN 999 OUTPUT
+--------------------
+
+The detailed LLDP output for the SW1-to-SW3 link displayed:
+
+Vlan ID: 999
+
+SW1 Fa0/23 had previously been configured as an unused access port in
+blackhole VLAN 999 before the interface was converted into an
+infrastructure trunk.
+
+Packet Tracer appears to expose VLAN information associated with the
+interface configuration in its LLDP output.
+
+This does not mean that the operational SW1-to-SW3 trunk only carries
+VLAN 999.
+
+Actual trunk configuration and operational state should be verified with
+commands such as:
+
+show interfaces trunk
+
+This demonstrates the importance of correlating discovery information
+with authoritative interface and switching configuration.
+
+
+LLDP TRANSMIT AND RECEIVE
+-------------------------
+
+LLDP provides separate interface-level controls for transmitting and
+receiving advertisements.
+
+Commands supported in the lab include:
+
+lldp transmit
+lldp receive
+
+This allows an administrator to independently control whether an
+interface:
+
+- Sends LLDP advertisements
+- Receives LLDP advertisements
+
+For example:
+
+no lldp transmit
+
+stops the interface from advertising local LLDP information.
+
+The interface may still receive LLDP advertisements if LLDP receive
+remains enabled.
+
+Similarly:
+
+no lldp receive
+
+prevents the interface from learning LLDP neighbors while transmission
+can remain enabled.
+
+This provides more granular directional control over discovery behavior.
+
+
+CDP AND LLDP TOPOLOGY DISCOVERY
+-------------------------------
+
+Discovery protocols can help an administrator reconstruct network
+topology.
+
+For example, CDP showed:
+
+SW1 Fa0/23 <------> SW3 Fa0/23
+
+SW1 Gi0/1  <------> R1 Gi0/0/0
+
+SW1 Po1    <------> SW2 Po1
+
+LLDP independently demonstrated the SW1-to-SW3 relationship:
+
+SW1 Fa0/23 <------> SW3 Fa0/23
+
+This information can be compared with network diagrams and interface
+descriptions to detect incorrect cabling or outdated documentation.
+
+
+DISCOVERY PROTOCOLS AND TROUBLESHOOTING
+---------------------------------------
+
+CDP and LLDP can be useful when:
+
+- A network diagram is unavailable
+- Documentation is outdated
+- A cable needs to be traced logically
+- The remote interface needs to be identified
+- The neighboring device needs to be identified
+- Device models need to be inventoried
+- Management information needs to be discovered
+- A physical topology needs to be verified
+
+Example troubleshooting workflow:
+
+1. SSH into a known switch.
+
+2. Run:
+
+   show cdp neighbors
+
+   or:
+
+   show lldp neighbors
+
+3. Identify the neighboring device and remote interface.
+
+4. Use detailed discovery information when needed.
+
+5. Continue through neighboring infrastructure to reconstruct or verify
+   the network topology.
+
+
+KEY COMMANDS
+------------
+
+CDP global information:
+
+show cdp
+
+CDP neighbor table:
+
+show cdp neighbors
+
+Detailed CDP information:
+
+show cdp neighbors detail
+
+CDP interface information:
+
+show cdp interface <interface>
+
+Disable CDP globally:
+
+no cdp run
+
+Enable CDP globally:
+
+cdp run
+
+Disable CDP on one interface:
+
+interface <interface>
+ no cdp enable
+
+Enable CDP on one interface:
+
+interface <interface>
+ cdp enable
+
+
+LLDP global information:
+
+show lldp
+
+Enable LLDP globally:
+
+lldp run
+
+Disable LLDP globally:
+
+no lldp run
+
+LLDP neighbor table:
+
+show lldp neighbors
+
+Detailed LLDP information:
+
+show lldp neighbors detail
+
+Enable LLDP transmission:
+
+interface <interface>
+ lldp transmit
+
+Disable LLDP transmission:
+
+interface <interface>
+ no lldp transmit
+
+Enable LLDP reception:
+
+interface <interface>
+ lldp receive
+
+Disable LLDP reception:
+
+interface <interface>
+ no lldp receive
+
+
+KEY LESSONS
+-----------
+
+1. CDP and LLDP are Layer 2 neighbor-discovery protocols.
+
+2. CDP is Cisco proprietary.
+
+3. LLDP is the vendor-neutral IEEE 802.1AB standard.
+
+4. Discovery protocols can identify directly connected devices without
+   requiring the administrator to manually trace physical cabling.
+
+5. CDP can reveal device identity, local and remote interfaces,
+   capabilities, platforms, software versions, and management addresses.
+
+6. LLDP can reveal similar information and is suitable for mixed-vendor
+   networks.
+
+7. The observed Packet Tracer CDP advertisement interval was 60 seconds
+   with a 180-second holdtime.
+
+8. The observed Packet Tracer LLDP advertisement interval was 30 seconds
+   with a 120-second holdtime.
+
+9. CDP neighbor entries age out when advertisements are no longer
+   received.
+
+10. CDP detail can provide management addresses that allow an
+    administrator to continue network discovery from device to device.
+
+11. LLDP provides independent transmit and receive controls.
+
+12. Discovery protocols can expose useful reconnaissance information and
+    should be limited on untrusted interfaces when not operationally
+    required.
+
+13. Interface-level CDP hardening allows CDP to remain useful on trusted
+    infrastructure links while preventing unnecessary advertisements
+    toward endpoints.
+
+14. Packet Tracer may display duplicate or unusual discovery entries for
+    technologies such as router subinterfaces and EtherChannels.
+
+15. Discovery output should be correlated with authoritative interface,
+    trunk, routing, and configuration information rather than treated as
+    the sole source of truth.
+
+16. CDP and LLDP are valuable tools for topology discovery,
+    documentation verification, inventory, and troubleshooting.
+
+
+SKILLS DEMONSTRATED
+-------------------
+
+- Cisco Discovery Protocol (CDP)
+- Link Layer Discovery Protocol (LLDP)
+- IEEE 802.1AB
+- Layer 2 neighbor discovery
+- Physical topology discovery
+- Neighbor-table interpretation
+- Device capability identification
+- Local/remote interface mapping
+- Management-address discovery
+- Hardware/platform identification
+- IOS version discovery
+- CDP timer interpretation
+- LLDP timer interpretation
+- LLDP transmit/receive controls
+- Interface-level CDP hardening
+- Discovery-protocol security considerations
+- EtherChannel discovery interpretation
+- Router-on-a-stick discovery interpretation
+- Network documentation verification
+- Infrastructure troubleshooting
